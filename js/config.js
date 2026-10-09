@@ -9,3 +9,7 @@ export const firebaseConfig = {
   messagingSenderId: '984347673030',
   appId: '1:984347673030:web:74623e1c6d00becfac32c7',
 };
+
+// Accounts allowed to create events (enforced by firestore.rules; this copy just
+// hides the "New event" button for everyone else). Empty = any Google account.
+export const ORGANIZER_EMAILS = ['jellenbogen@dawsonschool.org'];

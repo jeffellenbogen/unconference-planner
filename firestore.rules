@@ -7,11 +7,13 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null;
     }
-    // Organizers sign in with Google or email (not anonymous).
+    // Only these verified accounts can create events. Keep in sync with
+    // ORGANIZER_EMAILS in js/config.js (that copy only adjusts the UI).
     function isOrganizerAccount() {
-      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
-      // To restrict who can create events, use instead e.g.:
-      // && request.auth.token.email in ['you@yourschool.org']
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['jellenbogen@dawsonschool.org'];
     }
     function eventData(eid) {
       return get(/databases/$(database)/documents/events/$(eid)).data;

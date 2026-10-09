@@ -60,7 +60,7 @@ python3 -m http.server 8000
    - optionally **Email/Password**, as a fallback if your school's Google Workspace blocks third-party sign-in
 3. Open **Authentication → Settings → Authorized domains** and add `YOUR-GITHUB-USERNAME.github.io`.
 4. Open **Databases & Storage → Firestore → Create database** and choose **production mode** in a US location. On the **Rules** tab, paste the contents of [`firestore.rules`](firestore.rules) and click **Publish**.
-   - To limit who can create events, uncomment the email line in the rules.
+   - Only the emails listed in the rules can create events (currently `jellenbogen@dawsonschool.org`). To change that, edit the list in `firestore.rules` and `ORGANIZER_EMAILS` in `js/config.js`, then republish the rules.
 5. Open **Project settings** (gear icon) → **Your apps** → **Web `</>`**. Register the app, then copy the `firebaseConfig` values into [`js/config.js`](js/config.js).
    - These values are not secrets. The Firestore rules are what protect the data.
 6. Commit and push.

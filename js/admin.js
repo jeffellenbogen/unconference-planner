@@ -1,5 +1,6 @@
 import { html, useState, useEffect, useMemo, mount, useEventData, toast, guard, copyText, Tabs, CategoryTag, PhaseBadge, DemoBanner, Empty, ScheduleGrid, CategoryBars, Modal, QR, LoadError, getParam, setParam, siteUrl } from './ui.js';
 import { backend, DEMO, DEL } from './backend.js';
+import { ORGANIZER_EMAILS } from './config.js';
 import {
   PHASES,
   CATEGORY_COLORS,
@@ -75,6 +76,7 @@ function SignIn() {
 function EventPicker({ user, onOpen }) {
   const [events, setEvents] = useState(null);
   const [creating, setCreating] = useState(false);
+  const canCreate = DEMO || !ORGANIZER_EMAILS?.length || ORGANIZER_EMAILS.includes(String(user.email || '').toLowerCase());
   useEffect(() => {
     backend()
       .then((b) => b.listMyEvents(user.uid))
@@ -85,9 +87,12 @@ function EventPicker({ user, onOpen }) {
     <header class="topbar"><div class="wrap topbar-inner"><div class="ev-title">Unconference Planner · Organizer</div>
       <div class="me"><span class="muted small">${user.email}</span><button class="link" onClick=${guard(async () => (await backend()).signOut())}>Sign out</button></div></div></header>
     <main class="wrap">
-      <div class="row between"><h2>Your events</h2><button class="btn primary" onClick=${() => setCreating(true)}>+ New event</button></div>
+      <div class="row between"><h2>Your events</h2>${canCreate && html`<button class="btn primary" onClick=${() => setCreating(true)}>+ New event</button>`}</div>
+      ${!canCreate &&
+      html`<div class="banner info">Signed in as <strong>${user.email}</strong>. Only ${ORGANIZER_EMAILS.join(', ')} can create events here.${' '}
+        <button class="link" onClick=${guard(async () => (await backend()).signOut())}>Switch account</button></div>`}
       ${events === null && html`<p class="loading">Loading…</p>`}
-      ${events?.length === 0 && html`<${Empty}>No events yet. Create one to get started.<//>`}
+      ${events?.length === 0 && html`<${Empty}>${canCreate ? 'No events yet. Create one to get started.' : 'No events for this account.'}<//>`}
       <div class="event-list">
         ${(events || [])
           .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
