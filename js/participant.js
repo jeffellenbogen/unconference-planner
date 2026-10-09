@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useMemo, mount, useEventData, toast, guard, Tabs, CategoryTag, PhaseBadge, DemoBanner, Empty, ScheduleGrid, CategoryBars, getParam, setParam } from './ui.js';
+import { html, useState, useEffect, useMemo, mount, useEventData, toast, guard, Tabs, CategoryTag, PhaseBadge, DemoBanner, Empty, ScheduleGrid, CategoryBars, LoadError, getParam, setParam } from './ui.js';
 import { backend, DEL, union } from './backend.js';
 import { normalizeCode, ideaStats, ideaScore, findSimilar, INTEREST_LEVELS, dotsUsed, personalAgenda, fmtTime, uid as newId, categoryScores } from './model.js';
 
@@ -38,7 +38,7 @@ function App() {
   if (!uid) return html`<div class="wrap"><p class="loading">Connecting…</p></div>`;
   if (!code) return html`<${CodeScreen} onCode=${chooseCode} />`;
   if (data.loading) return html`<div class="wrap"><p class="loading">Loading event…</p></div>`;
-  if (data.error) return html`<${CodeScreen} onCode=${chooseCode} error=${data.error} />`;
+  if (data.error) return html`<${LoadError} code=${code} error=${data.error} onRetry=${data.retry} onBack=${() => chooseCode('')} />`;
   if (!data.event) return html`<${CodeScreen} onCode=${chooseCode} error=${`No event found with code “${code}”.`} />`;
   const me = data.participants.find((p) => p.id === uid);
   if (!me) return html`<${NameScreen} event=${data.event} uid=${uid} onBack=${() => chooseCode('')} />`;

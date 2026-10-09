@@ -47,6 +47,8 @@ export function onAuth(cb) {
 }
 export async function ensureAnon() {
   if (!auth.currentUser) await signInAnonymously(auth);
+  // Mint the token now so the first Firestore read isn't sent before sign-in lands.
+  await auth.currentUser.getIdToken();
   return auth.currentUser.uid;
 }
 export async function signInGoogle() {

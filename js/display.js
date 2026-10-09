@@ -1,4 +1,4 @@
-import { html, useState, useEffect, mount, useEventData, PhaseBadge, ScheduleGrid, CategoryBars, CategoryTag, QR, getParam, siteUrl } from './ui.js';
+import { html, useState, useEffect, mount, useEventData, PhaseBadge, ScheduleGrid, CategoryBars, CategoryTag, QR, LoadError, getParam, siteUrl } from './ui.js';
 import { backend } from './backend.js';
 import { normalizeCode, categoryScores, ideaStats, ideaScore, sessionDemand } from './model.js';
 
@@ -13,6 +13,7 @@ function Display() {
   const data = useEventData(uidReady && code ? code : null);
   if (!code) return html`<div class="display"><h1 class="center">Add ?code=YOURCODE to the URL</h1></div>`;
   if (!uidReady || data.loading) return html`<div class="display"><p class="loading">Loading…</p></div>`;
+  if (data.error) return html`<${LoadError} code=${code} error=${data.error} onRetry=${data.retry} />`;
   if (!data.event) return html`<div class="display"><h1 class="center">No event “${code}”</h1></div>`;
   const { event, participants, ideas, sessions } = data;
   const phase = event.phase || 'setup';

@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useMemo, mount, useEventData, toast, guard, copyText, Tabs, CategoryTag, PhaseBadge, DemoBanner, Empty, ScheduleGrid, CategoryBars, Modal, QR, getParam, setParam, siteUrl } from './ui.js';
+import { html, useState, useEffect, useMemo, mount, useEventData, toast, guard, copyText, Tabs, CategoryTag, PhaseBadge, DemoBanner, Empty, ScheduleGrid, CategoryBars, Modal, QR, LoadError, getParam, setParam, siteUrl } from './ui.js';
 import { backend, DEMO, DEL } from './backend.js';
 import {
   PHASES,
@@ -171,6 +171,7 @@ function Console({ user, code, onExit }) {
   const data = useEventData(code);
   const [tab, setTab] = useState('overview');
   if (data.loading) return html`<div class="wrap"><p class="loading">Loading…</p></div>`;
+  if (data.error) return html`<${LoadError} code=${code} error=${data.error} onRetry=${data.retry} onBack=${onExit} />`;
   if (!data.event)
     return html`<main class="wrap"><${Empty}>No event “${code}”. <button class="link" onClick=${onExit}>Back to events</button><//></main>`;
   if (!(data.event.adminUids || []).includes(user.uid))

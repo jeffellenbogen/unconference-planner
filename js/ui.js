@@ -4,23 +4,50 @@ import { PHASES, fmtTime } from './model.js';
 
 export { html, render, useState, useEffect, useMemo, useRef, useCallback };
 
+// Live event data. A listener that errors (e.g. a read sent just before sign-in
+// finished) is dead, so resubscribe a few times before showing the error.
 export function useEventData(eventId) {
   const [state, setState] = useState({ loading: true });
+  const [attempt, setAttempt] = useState({ n: 0, eventId });
+  const tries = attempt.eventId === eventId ? attempt.n : 0;
   useEffect(() => {
     if (!eventId) return;
     let unsub = () => {};
     let alive = true;
+    let timer;
     setState({ loading: true });
     backend().then((b) => {
       if (!alive) return;
-      unsub = b.watchEvent(eventId, (d) => setState({ loading: false, ...d }));
+      unsub = b.watchEvent(eventId, (d) => {
+        if (!alive) return;
+        if (d.error && tries < 3) {
+          alive = false;
+          unsub();
+          timer = setTimeout(() => setAttempt({ n: tries + 1, eventId }), 800 * 2 ** tries);
+          return;
+        }
+        setState({ loading: false, ...d });
+      });
     });
     return () => {
       alive = false;
+      clearTimeout(timer);
       unsub();
     };
-  }, [eventId]);
-  return state;
+  }, [eventId, tries, attempt]);
+  return { ...state, retry: () => setAttempt({ n: 0, eventId }) };
+}
+
+export function LoadError({ code, error, onRetry, onBack }) {
+  return html`<main class="wrap narrow center-screen">
+    <div class="card join">
+      <h1>Couldn't load “${code}”</h1>
+      <p class="muted">Check your Wi-Fi and try again. If it keeps happening, let the organizer know.</p>
+      <p class="small muted">${error}</p>
+      <button class="btn primary block" onClick=${onRetry}>Try again</button>
+      ${onBack && html`<button class="link" onClick=${onBack}>Use a different code</button>`}
+    </div>
+  </main>`;
 }
 
 let toastTimer;
