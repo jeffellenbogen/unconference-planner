@@ -199,7 +199,7 @@ function Console({ user, code, onExit }) {
       </div>
     </header>
     <main class="wrap wide">
-      <${PhaseStepper} event=${event} base=${ctx.base} />
+      <${PhaseStepper} event=${event} base=${ctx.base} tab=${tab} onTab=${setTab} />
       <${Tabs}
         active=${tab}
         onChange=${setTab}
@@ -227,7 +227,15 @@ const PHASE_HELP = {
   schedule: 'Generate & tweak the schedule, then publish. Participants get “My day”.',
 };
 
-function PhaseStepper({ event, base }) {
+// Where the organizer's work happens in each phase.
+const PHASE_TAB = {
+  setup: ['setup', 'Settings'],
+  curate: ['ideas', 'Ideas & merging'],
+  vote: ['sessions', 'Sessions'],
+  schedule: ['schedule', 'Schedule'],
+};
+
+function PhaseStepper({ event, base, tab, onTab }) {
   const cur = PHASES.findIndex((p) => p.id === (event.phase || 'setup'));
   const go = guard(async (id) => (await backend()).update(base, { phase: id }));
   const next = PHASES[cur + 1];
@@ -241,7 +249,13 @@ function PhaseStepper({ event, base }) {
     </ol>
     <div class="phase-help">
       <span class="muted">${PHASE_HELP[PHASES[cur].id]}</span>
-      ${next && html`<button class="btn primary" onClick=${() => go(next.id)}>Start ${next.label} →</button>`}
+      <div class="row wrap-row">
+        ${(() => {
+          const [t, label] = PHASE_TAB[PHASES[cur].id] || [];
+          return t && tab !== t && html`<button class="btn" onClick=${() => onTab(t)}>Go to ${label}</button>`;
+        })()}
+        ${next && html`<button class="btn primary" onClick=${() => go(next.id)}>Start ${next.label} →</button>`}
+      </div>
     </div>
   </section>`;
 }
@@ -418,7 +432,18 @@ function IdeasAdmin({ event, ideas, sessions, base, user }) {
     if (t && t.trim()) await (await backend()).update(`${base}/ideas/${i.id}`, { title: t.trim() });
   });
 
+  const target = Math.max(3, Math.round(breakoutSlots(event).length * (event.rooms || []).length * 1.5));
   return html`<div class="admin-ideas">
+    ${(event.phase || 'setup') === 'curate' &&
+    html`<details class="card howto" open>
+      <summary><strong>How to curate</strong> <span class="muted small">— aim for about ${target} sessions (you have ${sessions.length})</span></summary>
+      <ol>
+        <li>Tick ideas that belong together → <strong>Merge into new session</strong>. “Possible duplicates” below helps spot them.</li>
+        <li>Tick standalone ideas → <strong>Each → own session</strong>.</li>
+        <li><strong>Hide</strong> test or off-topic ideas. Or use <strong>Export for AI</strong> → paste into Claude → <strong>Import AI groups</strong> to do it all at once.</li>
+        <li>Polish titles and leaders in <strong>Sessions</strong>, then <strong>Start Phase 2: Vote</strong>.</li>
+      </ol>
+    </details>`}
     <div class="toolbar">
       <div class="chips">
         ${[
