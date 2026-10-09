@@ -54,12 +54,12 @@ python3 -m http.server 8000
 ## Go live: Firebase (about 10 minutes, free tier)
 
 1. Go to <https://console.firebase.google.com> → **Add project**. You can turn Analytics off.
-2. Open **Build → Authentication → Get started → Sign-in method** and enable:
+2. In the left sidebar, open **Security → Authentication → Get started**, then the **Sign-in method** tab. (Can't find it? Type "Authentication" in **Search for products**.) Enable:
    - **Anonymous**, for participants
    - **Google**, for you as the organizer
    - optionally **Email/Password**, as a fallback if your school's Google Workspace blocks third-party sign-in
 3. Open **Authentication → Settings → Authorized domains** and add `YOUR-GITHUB-USERNAME.github.io`.
-4. Open **Build → Firestore Database → Create database** and choose **production mode** in a US location. On the **Rules** tab, paste the contents of [`firestore.rules`](firestore.rules) and click **Publish**.
+4. Open **Databases & Storage → Firestore → Create database** and choose **production mode** in a US location. On the **Rules** tab, paste the contents of [`firestore.rules`](firestore.rules) and click **Publish**.
    - To limit who can create events, uncomment the email line in the rules.
 5. Open **Project settings** (gear icon) → **Your apps** → **Web `</>`**. Register the app, then copy the `firebaseConfig` values into [`js/config.js`](js/config.js).
    - These values are not secrets. The Firestore rules are what protect the data.
