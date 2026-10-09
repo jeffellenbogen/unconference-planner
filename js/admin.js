@@ -962,15 +962,20 @@ function Settings({ event, participants, ideas, sessions, base, onDeleted }) {
         <h3>Agenda</h3>
         <p class="muted small">“Breakout” blocks get one session per room. Everything else is whole-group time.</p>
         ${draft.agenda.map(
-          (a, i) => html`<div class="edit-row agenda-row">
-            <input type="time" value=${a.start} onInput=${(e) => agenda.set(i, { start: e.target.value })} aria-label="Start" />
-            <input type="time" value=${a.end} onInput=${(e) => agenda.set(i, { end: e.target.value })} aria-label="End" />
-            <input class="grow" value=${a.label} onInput=${(e) => agenda.set(i, { label: e.target.value })} aria-label="Label" />
-            <select value=${a.kind} onChange=${(e) => agenda.set(i, { kind: e.target.value })} aria-label="Kind">
-              <option value="breakout">Breakout</option>
-              <option value="plenary">Whole group</option>
-            </select>
-            <${RowBtns} i=${i} n=${draft.agenda.length} op=${agenda} />
+          (a, i) => html`<div class=${`agenda-item ${a.kind}`}>
+            <div class="edit-row">
+              <input class="agenda-label grow" value=${a.label} onInput=${(e) => agenda.set(i, { label: e.target.value })} aria-label="Block name" placeholder="Block name" />
+              <${RowBtns} i=${i} n=${draft.agenda.length} op=${agenda} />
+            </div>
+            <div class="edit-row agenda-row">
+              <input type="time" value=${a.start} onInput=${(e) => agenda.set(i, { start: e.target.value })} aria-label="Start" />
+              <span class="muted">–</span>
+              <input type="time" value=${a.end} onInput=${(e) => agenda.set(i, { end: e.target.value })} aria-label="End" />
+              <select value=${a.kind} onChange=${(e) => agenda.set(i, { kind: e.target.value })} aria-label="Kind">
+                <option value="breakout">Breakout</option>
+                <option value="plenary">Whole group</option>
+              </select>
+            </div>
           </div>`
         )}
         <button class="btn small" onClick=${() => {

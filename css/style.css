@@ -378,6 +378,9 @@ textarea { resize: vertical; }
 .save-bar { position: sticky; top: 8px; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 12px; }
 .save-bar.dirty { border-color: var(--warn); }
 .edit-row { display: flex; gap: 8px; align-items: center; }
+.agenda-item { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 10px 12px; border-left: 4px solid var(--border); }
+.agenda-item.breakout { border-left-color: var(--accent); }
+.agenda-label { font-weight: 600; }
 .agenda-row { flex-wrap: wrap; }
 .agenda-row select { width: auto; }
 .row-btns { display: flex; gap: 4px; }
