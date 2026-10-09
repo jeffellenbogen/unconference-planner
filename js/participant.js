@@ -124,8 +124,14 @@ function Main({ event, participants, ideas, sessions, me, uid, onLeave }) {
 function Waiting({ event }) {
   return html`<div class="card hero">
     <h2>You're in!</h2>
-    <p>${event.tagline || 'We will start shortly.'}</p>
-    <p class="muted">Keep this page open — it updates automatically when the session begins.</p>
+    ${event.tagline && html`<p>${event.tagline}</p>`}
+    <p class="muted">When the organizer opens Phase 1, this page switches on its own and you'll be able to:</p>
+    <ol class="coming">
+      <li><strong>Rank</strong> the big topics</li>
+      <li><strong>+1</strong> ideas and <strong>add flavor</strong> to the ones you like</li>
+      <li><strong>Suggest</strong> your own session ideas — and offer to lead</li>
+    </ol>
+    <p class="muted small">Keep this page open. No need to refresh.</p>
   </div>`;
 }
 

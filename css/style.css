@@ -78,6 +78,9 @@ code { background: var(--surface-2); padding: 0 4px; border-radius: 4px; }
 /* ---------- controls ---------- */
 input, select, textarea {
   font: inherit;
+  /* 16px+ keeps iOS Safari from zooming in when a field is tapped. */
+  font-size: 1rem;
+  font-weight: 400;
   color: inherit;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -209,6 +212,7 @@ textarea { resize: vertical; }
 .rank-text .muted { font-size: 0.85rem; }
 .rank-btns { display: flex; gap: 4px; }
 .saved { color: var(--ok); font-weight: 600; }
+.coming { text-align: left; max-width: 26rem; margin: 16px auto; padding-left: 1.4rem; display: flex; flex-direction: column; gap: 6px; }
 
 .bars { display: flex; flex-direction: column; gap: 8px; }
 .bar-row { display: grid; grid-template-columns: minmax(0, 11rem) 1fr 3rem; gap: 10px; align-items: center; }
