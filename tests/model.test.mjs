@@ -13,6 +13,7 @@ import {
   parseAiGroups,
   breakoutSlots,
   fmtTime,
+  participantStep,
 } from '../js/model.js';
 
 function event(mode = 'interest', rooms = 2) {
@@ -139,4 +140,14 @@ test('time formatting', () => {
   assert.equal(fmtTime('13:05'), '1:05');
   assert.equal(fmtTime('09:00'), '9:00');
   assert.equal(fmtTime('12:30'), '12:30');
+});
+
+test('participant step follows the organizer phase', () => {
+  const at = (phase, published) => participantStep({ phase, schedule: { published } });
+  assert.deepEqual(at('setup'), { step: 1, state: 'next' });
+  assert.deepEqual(at('ideas'), { step: 1, state: 'now' });
+  assert.deepEqual(at('curate'), { step: 2, state: 'next' });
+  assert.deepEqual(at('vote'), { step: 2, state: 'now' });
+  assert.deepEqual(at('schedule', false), { step: 3, state: 'next' });
+  assert.deepEqual(at('schedule', true), { step: 3, state: 'now' });
 });

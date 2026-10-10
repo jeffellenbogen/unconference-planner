@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useMemo, mount, useEventData, toast, guard, copyText, Tabs, CategoryTag, PhaseBadge, DemoBanner, Empty, ScheduleGrid, CategoryBars, Modal, QR, LoadError, getParam, setParam, siteUrl } from './ui.js';
+import { html, useState, useEffect, useMemo, mount, useEventData, toast, guard, copyText, Tabs, CategoryTag, PhaseBadge, DemoBanner, Empty, ScheduleGrid, CategoryBars, Modal, QR, LoadError, Logo, MoreMenu, getParam, setParam, siteUrl } from './ui.js';
 import { backend, DEMO, DEL } from './backend.js';
 import { ORGANIZER_EMAILS } from './config.js';
 import {
@@ -52,7 +52,8 @@ function SignIn() {
   return html`<${DemoBanner} />
     <main class="wrap narrow center-screen">
       <div class="card join">
-        <p class="eyebrow">Organizer</p>
+        <${Logo} className="join-logo" />
+        <p class="eyebrow">Unconference Planner · Organizer</p>
         <h1>Sign in to run an event</h1>
         ${DEMO
           ? html`<p class="muted">Demo mode: no real account needed.</p>
@@ -84,7 +85,8 @@ function EventPicker({ user, onOpen }) {
       .catch((e) => (toast(e.message, 'err'), setEvents([])));
   }, [user.uid]);
   return html`<${DemoBanner} />
-    <header class="topbar"><div class="wrap topbar-inner"><div class="ev-title">Unconference Planner · Organizer</div>
+    <header class="site-header"><div class="wrap header-inner">
+      <div class="brand"><${Logo} /><span class="app-name">Unconference Planner</span></div>
       <div class="me"><span class="muted small">${user.email}</span><button class="link" onClick=${guard(async () => (await backend()).signOut())}>Sign out</button></div></div></header>
     <main class="wrap">
       <div class="row between"><h2>Your events</h2>${canCreate && html`<button class="btn primary" onClick=${() => setCreating(true)}>+ New event</button>`}</div>
@@ -186,13 +188,16 @@ function Console({ user, code, onExit }) {
   const ctx = { ...data, base: `events/${event.id}`, user };
   const unassigned = ideas.filter((i) => !i.hidden && !i.sessionId).length;
   return html`<${DemoBanner} />
-    <header class="topbar admin">
-      <div class="wrap wide topbar-inner">
-        <div>
-          <button class="link small" onClick=${onExit}>← All events</button>
-          <div class="ev-title">${event.title} <span class="muted small">· code <strong>${event.id}</strong></span></div>
+    <header class="site-header">
+      <div class="wrap wide header-inner">
+        <div class="brand">
+          <${Logo} />
+          <div>
+            <button class="link small" onClick=${onExit}>← All events</button>
+            <div class="ev-title">${event.title} <span class="muted small">· code <strong>${event.id}</strong></span></div>
+          </div>
         </div>
-        <div class="row">
+        <div class="row wrap-row">
           <a class="btn small ghost" href=${siteUrl('index.html', event.id)} target="_blank" rel="noopener">Participant view ↗</a>
           <a class="btn small ghost" href=${siteUrl('display.html', event.id)} target="_blank" rel="noopener">Projector ↗</a>
         </div>
@@ -220,11 +225,11 @@ function Console({ user, code, onExit }) {
 }
 
 const PHASE_HELP = {
-  setup: 'Participants can join and wait. Seed topics and ideas.',
-  ideas: 'Participants rank big topics, +1 ideas, add flavor, and suggest new ideas.',
-  curate: 'Suggestions close. Merge ideas into sessions — participants see sessions appear.',
-  vote: 'Participants rate sessions and offer to lead.',
-  schedule: 'Generate & tweak the schedule, then publish. Participants get “My day”.',
+  setup: 'People can join and wait. Check topics, rooms, and times in Settings.',
+  ideas: 'Participants are on Step 1: ranking topics, backing ideas, and suggesting their own.',
+  curate: 'Suggestions are closed. Merge ideas into sessions — participants see them appear.',
+  vote: 'Participants are on Step 2: voting on sessions and offering to lead.',
+  schedule: 'Generate and adjust the schedule, then publish it. Participants get “Your day” (Step 3).',
 };
 
 // Where the organizer's work happens in each phase.
@@ -243,7 +248,7 @@ function PhaseStepper({ event, base, tab, onTab }) {
     <ol class="phases">
       ${PHASES.map(
         (p, i) => html`<li class=${i === cur ? 'now' : i < cur ? 'done' : ''}>
-          <button onClick=${() => go(p.id)} title=${PHASE_HELP[p.id]}><span class="num">${i + 1}</span>${p.label}</button>
+          <button onClick=${() => go(p.id)} title=${PHASE_HELP[p.id]} aria-current=${i === cur ? 'step' : undefined}><span class="num">${i < cur ? '✓' : i + 1}</span>${p.label}</button>
         </li>`
       )}
     </ol>
@@ -254,7 +259,7 @@ function PhaseStepper({ event, base, tab, onTab }) {
           const [t, label] = PHASE_TAB[PHASES[cur].id] || [];
           return t && tab !== t && html`<button class="btn" onClick=${() => onTab(t)}>Go to ${label}</button>`;
         })()}
-        ${next && html`<button class="btn primary" onClick=${() => go(next.id)}>Start ${next.label} →</button>`}
+        ${next && html`<button class="btn primary" onClick=${() => go(next.id)}>${PHASES[cur].next} →</button>`}
       </div>
     </div>
   </section>`;
@@ -440,8 +445,8 @@ function IdeasAdmin({ event, ideas, sessions, base, user }) {
       <ol>
         <li>Tick ideas that belong together → <strong>Merge into new session</strong>. “Possible duplicates” below helps spot them.</li>
         <li>Tick standalone ideas → <strong>Each → own session</strong>.</li>
-        <li><strong>Hide</strong> test or off-topic ideas. Or use <strong>Export for AI</strong> → paste into Claude → <strong>Import AI groups</strong> to do it all at once.</li>
-        <li>Polish titles and leaders in <strong>Sessions</strong>, then <strong>Start Phase 2: Vote</strong>.</li>
+        <li><strong>Hide</strong> test or off-topic ideas. Shortcut: <strong>More tools → Export ideas for AI</strong>, paste into Claude, then <strong>Import AI groups</strong>.</li>
+        <li>Polish titles and leaders in <strong>Sessions</strong>, then <strong>Open Step 2: Vote</strong>.</li>
       </ol>
     </details>`}
     <div class="toolbar">
@@ -457,11 +462,14 @@ function IdeasAdmin({ event, ideas, sessions, base, user }) {
           ${(event.categories || []).map((c) => html`<option value=${c.id}>${c.name}</option>`)}
         </select>
       </div>
-      <div class="row">
-        <button class="btn small ghost" onClick=${() => setModal('add')}>+ Organizer idea</button>
-        <button class="btn small ghost" onClick=${() => setModal('ai-export')}>Export for AI</button>
-        <button class="btn small ghost" onClick=${() => setModal('ai-import')}>Import AI groups</button>
-      </div>
+      <${MoreMenu}
+        label="More tools"
+        items=${[
+          { label: '+ Add an organizer idea', onClick: () => setModal('add') },
+          { label: 'Export ideas for AI grouping', onClick: () => setModal('ai-export') },
+          { label: 'Import AI groups', onClick: () => setModal('ai-import') },
+        ]}
+      />
     </div>
 
     ${dupes.length > 0 &&
@@ -774,12 +782,16 @@ function ScheduleAdmin({ event, sessions, participants, base }) {
   return html`<div class="toolbar">
       <div class="row wrap-row">
         <button class="btn primary" onClick=${generate} disabled=${!sessions.length}>⚡ Generate from votes</button>
-        <button class="btn ghost" onClick=${() => confirm('Clear all cells, including locked?') && saveCells(emptyCells(event))}>Clear</button>
+        <${MoreMenu}
+          items=${[
+            { label: 'Copy schedule as text', onClick: () => copyText(text, 'Schedule copied') },
+            { label: 'Download CSV', onClick: csv },
+            { label: 'Print', onClick: () => window.print() },
+            { label: 'Clear all cells', danger: true, onClick: () => confirm('Clear all cells, including locked?') && saveCells(emptyCells(event)) },
+          ]}
+        />
       </div>
       <div class="row wrap-row">
-        <button class="btn small ghost" onClick=${() => copyText(text, 'Schedule copied')}>Copy text</button>
-        <button class="btn small ghost" onClick=${csv}>CSV</button>
-        <button class="btn small ghost" onClick=${() => window.print()}>Print</button>
         <label class=${published ? 'switch on' : 'switch'}>
           <input type="checkbox" checked=${published} onChange=${guard(async (e) => (await b()).update(base, { 'schedule.published': e.target.checked }))} />
           ${published ? 'Published to participants' : 'Not published'}

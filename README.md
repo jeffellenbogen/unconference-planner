@@ -10,35 +10,21 @@ A small web app for running an unconference-style PD day. Participants join from
 
 ## How a day flows
 
-1. **Setup.** Create an event from the *Tech PD template*: 4 topics, 10 starter ideas, 3 breakouts × 2 rooms. Edit the topics, rooms, agenda times, and voting style under **Settings**.
-2. **Phase 1: Ideas.** Participants:
-   - drag to rank the big topics
-   - +1 ideas
-   - say "I could lead"
-   - add flavor (comments)
-   - suggest new ideas
+Participants see three plain steps — **① Share ideas → ② Vote → ③ Your schedule** — plus a "Now" card that always says what to do. The organizer moves everyone along from the phase bar in the admin console.
 
-   While someone types a suggestion, the app shows similar ideas that already exist and offers **"+1 & add my angle"** so ideas don't splinter.
-3. **Curating.** Suggestions close. In **Ideas & merging**:
-   - select ideas → **Merge into new session**, **Each → own session**, or **Add to existing session**
-   - the **Possible duplicates** panel flags look-alikes
-   - **Export for AI** copies a ready-made prompt. Paste it into Claude, then paste the JSON reply into **Import AI groups** to create all the sessions at once.
+| Organizer phase | Participants see |
+|---|---|
+| **Waiting room** | "Welcome!" — what's coming. Check topics, rooms, times, and voting style in **Settings**. |
+| **Share ideas** | Step 1, in three guided parts: **Rank topics** → **Back ideas** (▲, comment, "I could lead") → **Suggest** your own. While someone types, similar ideas pop up with **"Back it + add my angle"** so ideas don't splinter. |
+| **Build sessions** | "Hang tight" while sessions appear. You merge ideas in **Ideas & merging** (tick ideas → **Merge into new session** or **Each → own session**; **Possible duplicates** flags look-alikes; **More tools → Export ideas for AI** gives a prompt to paste into Claude, then **Import AI groups**). |
+| **Vote** | Step 2: **Must attend / Interested / Skip**, or **dot voting** (set in Settings), plus "I can lead". Confirm leaders on the **Sessions** tab. |
+| **Schedule** | Step 3 once you **Publish**: "Your day" (best pick per block) and the full grid. |
 
-   Participants watch the sessions appear.
-4. **Phase 2: Vote.** Participants vote using one of two styles (set in Settings):
-   - **Interest levels:** Must attend, Interested, or Skip
-   - **Dot voting:** N dots to spread across sessions
+**⚡ Generate from votes** picks the most-wanted sessions, spreads them so people's "must" picks don't clash, never double-books a leader, and puts the biggest crowds in the biggest rooms. Change any cell from its dropdown, 🔒 lock cells to keep them, and regenerate the rest. **More** has copy-as-text, CSV, print, and clear.
 
-   Either way, they can tap "I can lead". Organizers confirm leaders on the **Sessions** tab.
-5. **Schedule.** Click **⚡ Generate from votes**. The generator:
-   - picks the most-wanted sessions
-   - spreads them across blocks so people's "must" picks don't clash
-   - never double-books a leader
-   - puts the biggest crowds in the biggest rooms
+The projector (`display.html?code=…`) always shows the join QR code, link, and code, a big "Now" banner for the current step, and live results.
 
-   You can change any cell from its dropdown. 🔒 Lock cells you want to keep, then regenerate the rest. Turn on **Publish**: participants get **My day** (their best pick per block) plus the full grid. You can also copy the schedule as text, download a CSV, or print it.
-
-Nothing is locked in. You can jump to any phase from the stepper at any time.
+Nothing is locked in — you can jump to any phase from the phase bar at any time.
 
 ## Try it now (demo mode)
 
@@ -74,13 +60,17 @@ Repo **Settings → Pages → Build and deployment**: set *Deploy from a branch*
 - [ ] Create the event the day before. Check rooms, capacities, and agenda times.
 - [ ] Do a test run on your phone, then use **Settings → Reset event** to clear the test data.
 - [ ] Put `display.html?code=…` on the projector and press *Full screen*.
-- [ ] Phase 1: about 15–20 min. Curating: about 10 min (Export for AI makes this fast). Vote: about 5–10 min. Generate, review clashes, publish.
+- [ ] Share ideas: about 15–20 min. Build sessions: about 10 min (Export for AI makes this fast). Vote: about 5–10 min. Generate, review clashes, publish.
 
 ## Notes and limits
 
 - Participant identity is anonymous and tied to the browser. Someone who switches devices rejoins as a new person (organizers can remove duplicates on the Overview tab).
 - Participants can't edit or delete their own ideas after posting. Organizers can edit titles or hide ideas.
 - About 25 people is far below Firebase's free-tier limits.
+
+## Branding
+
+Dawson School logo and colors from the 2023 brand manual (`assets/`, `css/style.css`). Fonts are the manual's web substitutes, vendored in `vendor/fonts/`: Crimson Pro for Minion Pro and Nunito Sans for Avenir. Topic colors default to the brand palette.
 
 ## Development
 

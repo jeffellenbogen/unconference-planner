@@ -1,6 +1,6 @@
 import { html, render, useState, useEffect, useMemo, useRef, useCallback } from '../vendor/preact-htm.module.js';
 import { backend, DEMO } from './backend.js';
-import { PHASES, fmtTime } from './model.js';
+import { PHASES, STEPS, participantStep, fmtTime } from './model.js';
 
 export { html, render, useState, useEffect, useMemo, useRef, useCallback };
 
@@ -90,6 +90,46 @@ export const phaseInfo = (id) => PHASES.find((p) => p.id === id) || PHASES[0];
 
 export function PhaseBadge({ phase }) {
   return html`<span class="badge phase-${phase}">${phaseInfo(phase).label}</span>`;
+}
+
+export function Logo({ className = '' }) {
+  return html`<img class=${`logo ${className}`} src="assets/dawson-logo.png" alt="Dawson School" width="1082" height="405" />`;
+}
+
+// ① Share ideas — ② Vote — ③ Your schedule, with done / now / next states.
+export function StepTracker({ event, size = '' }) {
+  const { step, state } = participantStep(event);
+  return html`<ol class=${`steps ${size}`} aria-label="Unconference steps">
+    ${STEPS.map((s) => {
+      const st = s.n < step ? 'done' : s.n === step ? state : 'todo';
+      return html`<li class=${`step ${st}`} aria-current=${st === 'now' ? 'step' : undefined}>
+        <span class="step-dot">${st === 'done' ? '✓' : s.n}</span>
+        <span class="step-text">
+          <span class="step-label">${s.label}</span>
+          ${st === 'now' && html`<span class="step-state">Now</span>`}
+          ${st === 'next' && html`<span class="step-state">Up next</span>`}
+        </span>
+      </li>`;
+    })}
+  </ol>`;
+}
+
+// Small dropdown for less-used actions. items: [{ label, onClick, danger }]
+export function MoreMenu({ label = 'More', items }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const close = (e) => ref.current && !ref.current.contains(e.target) && ref.current.removeAttribute('open');
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, []);
+  return html`<details class="menu" ref=${ref}>
+    <summary class="btn small ghost">${label} ▾</summary>
+    <div class="menu-list" role="menu" onClick=${() => ref.current?.removeAttribute('open')}>
+      ${items
+        .filter(Boolean)
+        .map((it) => html`<button role="menuitem" class=${it.danger ? 'menu-item danger' : 'menu-item'} onClick=${it.onClick} disabled=${it.disabled}>${it.label}</button>`)}
+    </div>
+  </details>`;
 }
 
 export function CategoryTag({ cat }) {

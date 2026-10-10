@@ -1,15 +1,35 @@
 // Pure logic: templates, aggregation, similarity, scheduling.
 // No DOM or backend imports so it can be unit-tested with `node --test`.
 
+// Organizer-facing phases. Participants only ever see the three STEPS below;
+// "Build sessions" is organizer work that participants see as a short wait.
 export const PHASES = [
-  { id: 'setup', label: 'Setup', short: 'Getting ready' },
-  { id: 'ideas', label: 'Phase 1: Ideas', short: 'Rank & suggest' },
-  { id: 'curate', label: 'Curating', short: 'Building sessions' },
-  { id: 'vote', label: 'Phase 2: Vote', short: 'Pick sessions' },
-  { id: 'schedule', label: 'Schedule', short: 'Your day' },
+  { id: 'setup', label: 'Waiting room', next: 'Open Step 1: Share ideas' },
+  { id: 'ideas', label: 'Share ideas', next: 'Close ideas & build sessions' },
+  { id: 'curate', label: 'Build sessions', next: 'Open Step 2: Vote' },
+  { id: 'vote', label: 'Vote', next: 'Close voting & build schedule' },
+  { id: 'schedule', label: 'Schedule' },
 ];
 
-export const CATEGORY_COLORS = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2', '#dc2626', '#4d7c0f'];
+export const STEPS = [
+  { n: 1, label: 'Share ideas' },
+  { n: 2, label: 'Vote' },
+  { n: 3, label: 'Your schedule' },
+];
+
+// Which participant step we're on, and whether it's open ('now') or about to open ('next').
+export function participantStep(event) {
+  const phase = event?.phase || 'setup';
+  if (phase === 'setup') return { step: 1, state: 'next' };
+  if (phase === 'ideas') return { step: 1, state: 'now' };
+  if (phase === 'curate') return { step: 2, state: 'next' };
+  if (phase === 'vote') return { step: 2, state: 'now' };
+  return { step: 3, state: event.schedule?.published ? 'now' : 'next' };
+}
+
+// Dawson brand palette (2023 brand manual): Dawson Blue, Light Sea Green, Rich Purple,
+// Atomic Orange, Carolina Blue, Charcoal, Royal Blue, Silver.
+export const CATEGORY_COLORS = ['#0033A0', '#22ACA3', '#4D1551', '#FF9966', '#7BB0D4', '#413C38', '#00205B', '#BFBFBF'];
 
 export const INTEREST_LEVELS = [
   { id: 'must', label: 'Must attend', weight: 3 },
