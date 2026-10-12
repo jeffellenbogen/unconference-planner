@@ -14,6 +14,7 @@ import {
   breakoutSlots,
   fmtTime,
   participantStep,
+  prefWeight,
 } from '../js/model.js';
 
 function event(mode = 'interest', rooms = 2) {
@@ -54,12 +55,12 @@ test('demand in interest and dots modes', () => {
   const ss = [S('a'), S('b')];
   const ps = [
     { id: '1', votes: { a: 'must', b: 'interested' } },
-    { id: '2', votes: { a: 'skip' }, leads: { b: true } },
+    { id: '2', votes: { a: 'skip', b: 'interested' }, leads: { b: true } },
   ];
   const d = sessionDemand(event('interest'), ps, ss);
   assert.equal(d.a.score, 3);
   assert.equal(d.a.must, 1);
-  assert.equal(d.b.score, 1, 'offering to lead does not add interest');
+  assert.equal(d.b.score, 2, 'offering to lead does not add interest beyond the vote');
   assert.equal(d.b.leadOffers[0].uid, '2');
 
   const dd = sessionDemand(event('dots'), [{ id: '1', dots: { a: 4, b: 1 } }], ss);
@@ -156,11 +157,14 @@ test('lead offers never inflate dot-vote interest', () => {
   const ss = [S('a'), S('b')];
   const ps = [
     { id: '1', dots: { a: 2 } },
-    { id: '2', leads: { b: true } }, // offered to lead b, no dots on it
+    { id: '2', leads: { b: true } }, // offered to lead b, no dots on it (not a valid offer)
+    { id: '3', dots: { b: 1 }, leads: { b: true } }, // valid offer: one dot + lead
   ];
-  const d = sessionDemand(event('dots'), ps, ss);
-  assert.equal(d.b.score, 0);
-  assert.equal(d.b.voters, 0);
-  assert.equal(d.b.leadOffers.length, 1);
+  const ev = event('dots');
+  const d = sessionDemand(ev, ps, ss);
+  assert.equal(d.b.score, 1, 'only the real dot counts');
+  assert.deepEqual(d.b.leadOffers.map((o) => o.uid), ['3'], 'offers without a dot are ignored');
   assert.ok(d.a.score > d.b.score);
+  assert.equal(prefWeight(ev, ps[1], 'b'), 0, 'dot-less offer does not affect scheduling');
+  assert.equal(prefWeight(ev, ps[2], 'b'), 3, 'a real leader is kept apart like a must');
 });

@@ -522,7 +522,37 @@ function SessionCard({ s, cat, event, me, uid, base, readOnly, sources }) {
   const vote = me.votes?.[s.id];
   const dots = Number(me.dots?.[s.id] || 0);
   const left = Number(event.voting?.dots || 0) - dotsUsed(me);
-  const leading = !!me.leads?.[s.id];
+  // Offering to lead requires actually wanting the session: at least one dot,
+  // or Must attend / Interested. Older offers without a vote don't count.
+  const offered = !!me.leads?.[s.id];
+  const hasVote = mode === 'dots' ? dots > 0 : vote === 'must' || vote === 'interested';
+  const leading = offered && hasVote;
+  const toggleLead = () => {
+    if (leading) return patch({ [`leads.${s.id}`]: DEL });
+    if (mode === 'dots') {
+      if (dots > 0) return patch({ [`leads.${s.id}`]: true });
+      if (left <= 0) return toast('To lead this session, put at least one dot on it first — move a dot from another session.', 'err');
+      toast('Added a dot — leaders need at least one dot on their session.');
+      return patch({ [`dots.${s.id}`]: 1, [`leads.${s.id}`]: true });
+    }
+    if (hasVote) return patch({ [`leads.${s.id}`]: true });
+    toast('Marked Must attend — leaders attend their session.');
+    return patch({ [`leads.${s.id}`]: true, [`votes.${s.id}`]: 'must' });
+  };
+  const removeDot = () => {
+    if (dots > 1) return patch({ [`dots.${s.id}`]: dots - 1 });
+    if (leading) toast('Lead offer removed — leaders need at least one dot on their session.');
+    return patch({ [`dots.${s.id}`]: DEL, ...(offered ? { [`leads.${s.id}`]: DEL } : {}) });
+  };
+  const setVote = (level) => {
+    const next = vote === level ? null : level;
+    const p = { [`votes.${s.id}`]: next || DEL };
+    if (offered && (next === null || next === 'skip')) {
+      p[`leads.${s.id}`] = DEL;
+      if (leading) toast('Lead offer removed — leaders attend their session.');
+    }
+    return patch(p);
+  };
   return html`<article class=${`session card${vote ? ' voted-' + vote : ''}${dots ? ' has-dots' : ''}`} style=${cat ? `--c:${cat.color}` : ''}>
     <h4>${s.title}</h4>
     ${s.description && html`<p>${s.description}</p>`}
@@ -534,16 +564,16 @@ function SessionCard({ s, cat, event, me, uid, base, readOnly, sources }) {
     html`<div class="vote-row">
       ${mode === 'dots'
         ? html`<div class="stepper" role="group" aria-label=${`Dots for ${s.title}`}>
-            <button class="icon-btn" aria-label="Remove a dot" disabled=${!dots} onClick=${() => patch({ [`dots.${s.id}`]: dots > 1 ? dots - 1 : DEL })}>−</button>
+            <button class="icon-btn" aria-label="Remove a dot" disabled=${!dots} onClick=${removeDot}>−</button>
             <span class="dot-count">${dots ? Array.from({ length: dots }, () => html`<span class="dot"></span>`) : html`<span class="muted small">0 dots</span>`}</span>
             <button class="icon-btn" aria-label="Add a dot" disabled=${left <= 0} onClick=${() => patch({ [`dots.${s.id}`]: dots + 1 })}>+</button>
           </div>`
         : html`<div class="seg" role="group" aria-label=${`Interest in ${s.title}`}>
             ${INTEREST_LEVELS.map(
-              (l) => html`<button class=${vote === l.id ? `seg-btn on ${l.id}` : 'seg-btn'} aria-pressed=${vote === l.id} onClick=${() => patch({ [`votes.${s.id}`]: vote === l.id ? DEL : l.id })}>${l.label}</button>`
+              (l) => html`<button class=${vote === l.id ? `seg-btn on ${l.id}` : 'seg-btn'} aria-pressed=${vote === l.id} onClick=${() => setVote(l.id)}>${l.label}</button>`
             )}
           </div>`}
-      <button class=${leading ? 'pill on' : 'pill'} aria-pressed=${leading} onClick=${() => patch({ [`leads.${s.id}`]: leading ? DEL : true })}>🙋 ${leading ? 'You’ll help lead' : 'I can lead'}</button>
+      <button class=${leading ? 'pill on' : 'pill'} aria-pressed=${leading} onClick=${toggleLead}>🙋 ${leading ? 'You’ll help lead' : 'I can lead'}</button>
     </div>`}
   </article>`;
 }

@@ -217,7 +217,12 @@ export function voteWeight(event, p, sid) {
 // but it does NOT add to a session's popularity (see sessionDemand).
 export function prefWeight(event, p, sid) {
   const w = voteWeight(event, p, sid);
-  return p.leads?.[sid] ? Math.max(w, 3) : w;
+  return p.leads?.[sid] && w > 0 ? Math.max(w, 3) : w;
+}
+
+// A lead offer only counts when it's backed by a vote (a dot, or Must/Interested).
+export function offersToLead(event, p, sid) {
+  return !!p.leads?.[sid] && voteWeight(event, p, sid) > 0;
 }
 
 export function dotsUsed(p) {
@@ -235,7 +240,7 @@ export function sessionDemand(event, participants, sessions) {
       const w = voteWeight(event, p, s.id);
       if (w > 0) d.voters++;
       d.score += w;
-      if (p.leads?.[s.id]) d.leadOffers.push({ uid: p.id, name: p.name });
+      if (offersToLead(event, p, s.id)) d.leadOffers.push({ uid: p.id, name: p.name });
     }
     out[s.id] = d;
   }
