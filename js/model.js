@@ -206,12 +206,18 @@ export function duplicatePairs(ideas, threshold = 0.25) {
 // ---------- Phase 2 aggregation ----------
 
 // How much participant p wants session sid (0 = not at all).
+// What participant p actually voted for session sid (dots, or Must 3 / Interested 1 / Skip 0).
+export function voteWeight(event, p, sid) {
+  if (event.voting?.mode === 'dots') return Number(p.dots?.[sid] || 0);
+  return INTEREST_WEIGHT[p.votes?.[sid]] || 0;
+}
+
+// How much p needs to be at sid when placing sessions in time slots. Offering to
+// lead counts like a "must" here so a would-be leader's sessions don't clash,
+// but it does NOT add to a session's popularity (see sessionDemand).
 export function prefWeight(event, p, sid) {
-  let w = 0;
-  if (event.voting?.mode === 'dots') w = Number(p.dots?.[sid] || 0);
-  else w = INTEREST_WEIGHT[p.votes?.[sid]] || 0;
-  if (p.leads?.[sid]) w = Math.max(w, 3);
-  return w;
+  const w = voteWeight(event, p, sid);
+  return p.leads?.[sid] ? Math.max(w, 3) : w;
 }
 
 export function dotsUsed(p) {
@@ -226,7 +232,7 @@ export function sessionDemand(event, participants, sessions) {
       const v = p.votes?.[s.id];
       if (v && d[v] !== undefined) d[v]++;
       d.dots += Number(p.dots?.[s.id] || 0);
-      const w = prefWeight(event, p, s.id);
+      const w = voteWeight(event, p, s.id);
       if (w > 0) d.voters++;
       d.score += w;
       if (p.leads?.[s.id]) d.leadOffers.push({ uid: p.id, name: p.name });

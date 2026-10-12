@@ -4,7 +4,6 @@ import { ORGANIZER_EMAILS } from './config.js';
 import {
   PHASES,
   CATEGORY_COLORS,
-  INTEREST_LEVELS,
   techPdTemplate,
   blankTemplate,
   normalizeCode,
@@ -14,6 +13,8 @@ import {
   duplicatePairs,
   categoryScores,
   sessionDemand,
+  dotsUsed,
+  INTEREST_LEVELS,
   buildSchedule,
   evaluateSchedule,
   breakoutSlots,
@@ -187,6 +188,7 @@ function Console({ user, code, onExit }) {
   const { event, participants, ideas, sessions } = data;
   const ctx = { ...data, base: `events/${event.id}`, user };
   const unassigned = ideas.filter((i) => !i.hidden && !i.sessionId).length;
+  const voters = participants.filter((p) => Object.keys(p.votes || {}).length || Object.keys(p.dots || {}).length).length;
   return html`<${DemoBanner} />
     <header class="site-header">
       <div class="wrap wide header-inner">
@@ -212,6 +214,7 @@ function Console({ user, code, onExit }) {
           { id: 'overview', label: 'Overview' },
           { id: 'ideas', label: 'Ideas & merging', count: unassigned || null },
           { id: 'sessions', label: 'Sessions', count: sessions.length },
+          { id: 'votes', label: 'Votes', count: voters || null },
           { id: 'schedule', label: 'Schedule' },
           { id: 'setup', label: 'Settings' },
         ]}
@@ -219,6 +222,7 @@ function Console({ user, code, onExit }) {
       ${tab === 'overview' && html`<${Overview} ...${ctx} />`}
       ${tab === 'ideas' && html`<${IdeasAdmin} ...${ctx} />`}
       ${tab === 'sessions' && html`<${SessionsAdmin} ...${ctx} />`}
+      ${tab === 'votes' && html`<${VotesAdmin} ...${ctx} />`}
       ${tab === 'schedule' && html`<${ScheduleAdmin} ...${ctx} />`}
       ${tab === 'setup' && html`<${Settings} ...${ctx} onDeleted=${onExit} />`}
     </main>`;
@@ -236,7 +240,7 @@ const PHASE_HELP = {
 const PHASE_TAB = {
   setup: ['setup', 'Settings'],
   curate: ['ideas', 'Ideas & merging'],
-  vote: ['sessions', 'Sessions'],
+  vote: ['votes', 'Votes'],
   schedule: ['schedule', 'Schedule'],
 };
 
@@ -816,6 +820,103 @@ function SessionEditor({ s, d, event, ideas, sessions, base, selected, onToggle 
       <button class="link danger small" onClick=${del}>delete</button>
     </div>
   </article>`;
+}
+
+// ---------------- Votes ----------------
+
+const VOTE_SHORT = { must: 'Must', interested: 'Int', skip: 'Skip' };
+
+function VotesAdmin({ event, sessions, participants }) {
+  const dots = event.voting?.mode === 'dots';
+  const totalDots = Number(event.voting?.dots || 0);
+  const demand = sessionDemand(event, participants, sessions);
+  const cols = [...sessions].sort((a, b) => demand[b.id].score - demand[a.id].score || String(a.title).localeCompare(String(b.title)));
+  const max = Math.max(1, ...cols.map((s) => demand[s.id].score));
+  const rated = (p) => cols.filter((s) => (dots ? Number(p.dots?.[s.id] || 0) > 0 : p.votes?.[s.id])).length;
+  const finished = (p) => (dots ? totalDots > 0 && dotsUsed(p) >= totalDots : cols.length > 0 && rated(p) === cols.length);
+  const people = [...participants].sort((a, b) => rated(b) - rated(a) || String(a.name).localeCompare(String(b.name)));
+  const started = people.filter((p) => rated(p) > 0).length;
+  const done = people.filter(finished).length;
+  const cell = (p, s) => (dots ? Number(p.dots?.[s.id] || 0) || '' : VOTE_SHORT[p.votes?.[s.id]] || '');
+  const csv = () => {
+    const rows = [['Name', 'Role', ...cols.map((s) => s.title)]];
+    for (const p of people) rows.push([p.name, p.role || '', ...cols.map((s) => `${dots ? p.dots?.[s.id] || '' : p.votes?.[s.id] || ''}${p.leads?.[s.id] ? ' (could lead)' : ''}`)]);
+    const blob = new Blob([rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${event.id}-votes.csv`;
+    a.click();
+  };
+  if (!sessions.length) return html`<${Empty}>No sessions yet. Votes appear here once sessions exist and Step 2 is open.<//>`;
+
+  return html`<div class="stats compact">
+      <div><strong>${started}</strong><span>of ${participants.length} have started voting</span></div>
+      <div><strong>${done}</strong><span>${dots ? 'placed all their dots' : 'rated every session'}</span></div>
+      <div class=${participants.length - started ? 'warn' : ''}><strong>${participants.length - started}</strong><span>haven’t voted yet</span></div>
+    </div>
+
+    <section class="card">
+      <div class="row between wrap-row">
+        <h3>By session</h3>
+        <${MoreMenu} items=${[{ label: 'Download all votes (CSV)', onClick: csv }]} />
+      </div>
+      <div class="table-wrap">
+        <table class="vote-table">
+          <thead>
+            <tr>
+              <th>Session</th>
+              ${dots ? html`<th class="num">Dots</th>` : INTEREST_LEVELS.map((l) => html`<th class="num">${l.label}</th>`)}
+              <th>Interest</th>
+              <th>Could lead</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cols.map((s) => {
+              const d = demand[s.id];
+              const cat = (event.categories || []).find((c) => c.id === s.categoryId);
+              return html`<tr>
+                <td class="vt-title" style=${`--c:${cat?.color || 'var(--border)'}`}>${s.title}</td>
+                ${dots ? html`<td class="num">${d.dots}</td>` : html`<td class="num">${d.must}</td><td class="num">${d.interested}</td><td class="num">${d.skip}</td>`}
+                <td class="vt-bar"><span class="bar"><span style=${`width:${Math.max(2, (d.score / max) * 100)}%;background:${cat?.color || 'var(--blue)'}`}></span></span><span class="small muted">${d.score}</span></td>
+                <td class="small">${d.leadOffers.map((o) => o.name).join(', ') || html`<span class="muted">—</span>`}</td>
+              </tr>`;
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">Interest = ${dots ? 'dots placed' : 'Must × 3 + Interested × 1'} — only real votes count; offering to lead doesn’t add interest. “Generate from votes” picks sessions by this number and keeps each would-be leader’s sessions in different blocks.</p>
+    </section>
+
+    <section class="card">
+      <h3>By person</h3>
+      <p class="small muted">${dots ? 'Numbers are dots placed.' : 'Must · Int (interested) · Skip.'} 🙋 = offered to lead. Updates live.</p>
+      ${people.length === 0
+        ? html`<p class="muted">Nobody has joined yet.</p>`
+        : html`<div class="table-wrap">
+            <table class="matrix">
+              <thead>
+                <tr>
+                  <th class="sticky-col">Person</th>
+                  ${cols.map((s) => html`<th title=${s.title}><span class="mx-head">${s.title}</span></th>`)}
+                </tr>
+              </thead>
+              <tbody>
+                ${people.map(
+                  (p) => html`<tr class=${rated(p) ? '' : 'not-started'}>
+                    <th class="sticky-col">
+                      <span class="mx-name">${p.name}</span>
+                      <span class=${`mx-progress${finished(p) ? ' done' : ''}`}>${finished(p) ? '✓ done' : `${rated(p)}/${cols.length}`}</span>
+                    </th>
+                    ${cols.map((s) => {
+                      const v = p.votes?.[s.id];
+                      return html`<td class=${`mx ${dots ? (cell(p, s) ? 'dots' : 'none') : v || 'none'}`}>${cell(p, s)}${p.leads?.[s.id] ? html` <span title="Offered to lead">🙋</span>` : ''}</td>`;
+                    })}
+                  </tr>`
+                )}
+              </tbody>
+            </table>
+          </div>`}
+    </section>`;
 }
 
 // ---------------- Schedule ----------------

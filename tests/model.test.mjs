@@ -59,7 +59,7 @@ test('demand in interest and dots modes', () => {
   const d = sessionDemand(event('interest'), ps, ss);
   assert.equal(d.a.score, 3);
   assert.equal(d.a.must, 1);
-  assert.equal(d.b.score, 1 + 3);
+  assert.equal(d.b.score, 1, 'offering to lead does not add interest');
   assert.equal(d.b.leadOffers[0].uid, '2');
 
   const dd = sessionDemand(event('dots'), [{ id: '1', dots: { a: 4, b: 1 } }], ss);
@@ -150,4 +150,17 @@ test('participant step follows the organizer phase', () => {
   assert.deepEqual(at('vote'), { step: 2, state: 'now' });
   assert.deepEqual(at('schedule', false), { step: 3, state: 'next' });
   assert.deepEqual(at('schedule', true), { step: 3, state: 'now' });
+});
+
+test('lead offers never inflate dot-vote interest', () => {
+  const ss = [S('a'), S('b')];
+  const ps = [
+    { id: '1', dots: { a: 2 } },
+    { id: '2', leads: { b: true } }, // offered to lead b, no dots on it
+  ];
+  const d = sessionDemand(event('dots'), ps, ss);
+  assert.equal(d.b.score, 0);
+  assert.equal(d.b.voters, 0);
+  assert.equal(d.b.leadOffers.length, 1);
+  assert.ok(d.a.score > d.b.score);
 });

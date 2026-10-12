@@ -472,6 +472,30 @@ textarea { resize: vertical; }
 .row-btns { display: flex; gap: 4px; }
 .row-btns .icon-btn { width: 34px; height: 34px; }
 
+/* ---------- votes ---------- */
+.table-wrap { overflow-x: auto; margin: 8px 0; }
+.vote-table, .matrix { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+.vote-table th, .vote-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.vote-table th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 800; }
+.vote-table .num { text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; width: 5.5rem; }
+.vt-title { font-weight: 700; color: var(--navy); border-left: 5px solid var(--c); }
+.vt-bar { min-width: 160px; }
+.vt-bar .bar { display: inline-block; width: 120px; vertical-align: middle; margin-right: 8px; }
+.matrix th, .matrix td { border-bottom: 1px solid var(--border); padding: 6px 8px; }
+.matrix thead th { vertical-align: bottom; font-size: 0.78rem; font-weight: 700; color: var(--navy); text-align: center; }
+.mx-head { display: block; width: 7.5rem; white-space: normal; line-height: 1.2; }
+.matrix .sticky-col { position: sticky; left: 0; background: var(--surface); text-align: left; z-index: 1; min-width: 10rem; font-weight: 700; color: var(--navy); }
+.mx-name { display: block; }
+.mx-progress { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+.mx-progress.done { color: var(--ok); }
+.mx { text-align: center; font-weight: 800; font-size: 0.82rem; white-space: nowrap; }
+.mx.must { background: var(--blue); color: #fff; }
+.mx.interested { background: var(--sky); color: var(--navy); }
+.mx.skip { background: var(--alabaster); color: var(--muted); }
+.mx.dots { background: var(--accent-soft); color: var(--blue); }
+.mx.none { color: var(--silver); }
+.matrix tr.not-started .sticky-col .mx-name { color: var(--muted); }
+
 /* ---------- projector ---------- */
 .proj { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); font-size: 1.1rem; }
 .proj-head { display: flex; align-items: center; gap: 24px; padding: 14px 28px; background: var(--surface); border-bottom: 4px solid var(--blue); }
