@@ -62,7 +62,8 @@ export function toast(msg, kind = 'ok') {
   el.textContent = msg;
   el.className = `toast show ${kind}`;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (el.className = 'toast'), 2600);
+  // Longer messages stay up longer so people can read them.
+  toastTimer = setTimeout(() => (el.className = 'toast'), Math.min(8000, Math.max(2600, msg.length * 55)));
 }
 
 export async function copyText(text, msg = 'Copied') {

@@ -225,6 +225,38 @@ export function offersToLead(event, p, sid) {
   return !!p.leads?.[sid] && voteWeight(event, p, sid) > 0;
 }
 
+// When voting opens, pre-select "I can lead" on sessions built from ideas this person
+// offered to lead in Step 1 (or where the organizer listed them as a leader). Each
+// pre-selection is backed by a vote — one dot, or Must attend — per the leading rule.
+// Sessions the person already decided on (leads[sid] true or false) are left alone.
+// Returns { patch, titles } for the participant doc, or null when nothing to do.
+export function leadDefaults(event, me, sessions, ideas) {
+  const ideaById = Object.fromEntries(ideas.map((i) => [i.id, i]));
+  const dots = event.voting?.mode === 'dots';
+  let left = Number(event.voting?.dots || 0) - dotsUsed(me);
+  const patch = {};
+  const titles = [];
+  for (const s of sessions) {
+    if (me.leads && s.id in me.leads) continue;
+    const offered = (s.leaders || []).some((l) => l.uid && l.uid === me.id) || (s.ideaIds || []).some((id) => ideaById[id]?.leads?.[me.id]);
+    if (!offered) continue;
+    if (dots) {
+      if (!Number(me.dots?.[s.id] || 0)) {
+        if (left <= 0) continue;
+        patch[`dots.${s.id}`] = 1;
+        left--;
+      }
+    } else {
+      const v = me.votes?.[s.id];
+      if (v === 'skip') continue;
+      if (!v) patch[`votes.${s.id}`] = 'must';
+    }
+    patch[`leads.${s.id}`] = true;
+    titles.push(s.title);
+  }
+  return titles.length ? { patch, titles } : null;
+}
+
 export function dotsUsed(p) {
   return Object.values(p.dots || {}).reduce((a, b) => a + Number(b || 0), 0);
 }

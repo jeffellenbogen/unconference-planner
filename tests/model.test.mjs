@@ -15,6 +15,7 @@ import {
   fmtTime,
   participantStep,
   prefWeight,
+  leadDefaults,
 } from '../js/model.js';
 
 function event(mode = 'interest', rooms = 2) {
@@ -167,4 +168,31 @@ test('lead offers never inflate dot-vote interest', () => {
   assert.ok(d.a.score > d.b.score);
   assert.equal(prefWeight(ev, ps[1], 'b'), 0, 'dot-less offer does not affect scheduling');
   assert.equal(prefWeight(ev, ps[2], 'b'), 3, 'a real leader is kept apart like a must');
+});
+
+test('Step 1 lead offers carry over to sessions, backed by a vote', () => {
+  const ideas = [
+    { id: 'i1', leads: { me: 'Me' } },
+    { id: 'i2', leads: {} },
+    { id: 'i3', leads: { me: 'Me' } },
+  ];
+  const ss = [
+    S('a', { ideaIds: ['i1'] }),
+    S('b', { ideaIds: ['i2'] }),
+    S('c', { ideaIds: ['i3'] }),
+    S('d', { leaders: [{ uid: 'me', name: 'Me' }] }),
+  ];
+  // Dot voting with 2 dots: a and c each get a dot; d is skipped once dots run out
+  const dotsEv = { ...event('dots'), voting: { mode: 'dots', dots: 2 } };
+  const r = leadDefaults(dotsEv, { id: 'me' }, ss, ideas);
+  assert.deepEqual(r.patch, { 'dots.a': 1, 'leads.a': true, 'dots.c': 1, 'leads.c': true });
+  // Already has a dot on d → no extra dot, just the lead
+  const r2 = leadDefaults(dotsEv, { id: 'me', dots: { d: 1 } }, ss, ideas);
+  assert.equal(r2.patch['leads.d'], true);
+  assert.equal(r2.patch['dots.d'], undefined);
+  // Interest voting: no vote → Must attend; Skip is respected; an explicit "no" is respected
+  const r3 = leadDefaults(event('interest'), { id: 'me', votes: { c: 'skip' }, leads: { d: false } }, ss, ideas);
+  assert.deepEqual(r3.patch, { 'votes.a': 'must', 'leads.a': true });
+  // Nothing to do once decided
+  assert.equal(leadDefaults(event('interest'), { id: 'me', votes: { a: 'must' }, leads: { a: true, c: false, d: false } }, ss, ideas), null);
 });

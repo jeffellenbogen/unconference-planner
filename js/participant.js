@@ -1,6 +1,6 @@
-import { html, useState, useEffect, useMemo, mount, useEventData, toast, guard, CategoryTag, DemoBanner, Empty, ScheduleGrid, CategoryBars, LoadError, Logo, StepTracker, getParam, setParam } from './ui.js';
+import { html, useState, useEffect, useMemo, useRef, mount, useEventData, toast, guard, CategoryTag, DemoBanner, Empty, ScheduleGrid, CategoryBars, LoadError, Logo, StepTracker, getParam, setParam } from './ui.js';
 import { backend, DEL, union } from './backend.js';
-import { normalizeCode, ideaStats, ideaScore, findSimilar, INTEREST_LEVELS, dotsUsed, personalAgenda, fmtTime, uid as newId, categoryScores, participantStep } from './model.js';
+import { normalizeCode, ideaStats, ideaScore, findSimilar, INTEREST_LEVELS, dotsUsed, personalAgenda, fmtTime, uid as newId, categoryScores, participantStep, leadDefaults } from './model.js';
 
 const store = {
   get: (k) => {
@@ -473,6 +473,21 @@ function SessionsPreview(ctx) {
 // ---------------- Step 2: vote ----------------
 
 function VoteBoard(ctx) {
+  // Carry Step 1 "I could lead" offers over to the matching sessions (once each).
+  const defaults = leadDefaults(ctx.event, ctx.me, ctx.sessions, ctx.ideas);
+  const key = defaults ? Object.keys(defaults.patch).sort().join() : '';
+  const applying = useRef('');
+  useEffect(() => {
+    if (!defaults || applying.current === key) return;
+    applying.current = key;
+    const { patch, titles } = defaults;
+    guard(async () => {
+      await (await backend()).update(`${ctx.base}/participants/${ctx.uid}`, patch);
+      const many = titles.length > 1;
+      const how = ctx.event.voting?.mode === 'dots' ? `with a dot on ${many ? 'each' : 'it'}` : 'Must attend';
+      toast(`You offered to lead “${titles[0]}”${many ? ` and ${titles.length - 1} more` : ''} — ${many ? 'they’re' : 'it’s'} marked ${how}. Tap to change.`);
+    })();
+  }, [key]);
   return html`<${VoteStatus} ...${ctx} />
     <${SessionList} ...${ctx} />`;
 }
@@ -528,7 +543,7 @@ function SessionCard({ s, cat, event, me, uid, base, readOnly, sources }) {
   const hasVote = mode === 'dots' ? dots > 0 : vote === 'must' || vote === 'interested';
   const leading = offered && hasVote;
   const toggleLead = () => {
-    if (leading) return patch({ [`leads.${s.id}`]: DEL });
+    if (leading) return patch({ [`leads.${s.id}`]: false });
     if (mode === 'dots') {
       if (dots > 0) return patch({ [`leads.${s.id}`]: true });
       if (left <= 0) return toast('To lead this session, put at least one dot on it first — move a dot from another session.', 'err');
@@ -542,13 +557,13 @@ function SessionCard({ s, cat, event, me, uid, base, readOnly, sources }) {
   const removeDot = () => {
     if (dots > 1) return patch({ [`dots.${s.id}`]: dots - 1 });
     if (leading) toast('Lead offer removed — leaders need at least one dot on their session.');
-    return patch({ [`dots.${s.id}`]: DEL, ...(offered ? { [`leads.${s.id}`]: DEL } : {}) });
+    return patch({ [`dots.${s.id}`]: DEL, ...(offered ? { [`leads.${s.id}`]: false } : {}) });
   };
   const setVote = (level) => {
     const next = vote === level ? null : level;
     const p = { [`votes.${s.id}`]: next || DEL };
     if (offered && (next === null || next === 'skip')) {
-      p[`leads.${s.id}`] = DEL;
+      p[`leads.${s.id}`] = false;
       if (leading) toast('Lead offer removed — leaders attend their session.');
     }
     return patch(p);
