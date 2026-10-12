@@ -399,6 +399,7 @@ function IdeasAdmin({ event, ideas, sessions, base, user }) {
     .filter((i) => cat === 'all' || i.categoryId === cat)
     .sort((a, b) => ideaScore(b) - ideaScore(a));
   const selected = ideas.filter((i) => sel.has(i.id));
+  const assignedCount = ideas.filter((i) => !i.hidden && i.sessionId).length;
   const dupes = useMemo(() => duplicatePairs(visible.filter((i) => !i.sessionId)).slice(0, 8), [ideas]);
   const toggle = (id) => {
     const n = new Set(sel);
@@ -499,6 +500,12 @@ function IdeasAdmin({ event, ideas, sessions, base, user }) {
       ${selected.length > 0 && html`<button class="link small" onClick=${clear}>clear</button>`}
     </div>
 
+    ${filter === 'unassigned' &&
+    assignedCount > 0 &&
+    html`<p class="small muted filter-hint">
+      ${assignedCount} idea${assignedCount > 1 ? 's are' : ' is'} already in sessions — see <button class="link" onClick=${() => setFilter('assigned')}>In a session</button>.
+      To combine whole sessions, use <strong>Sessions → Merge</strong>.
+    </p>`}
     ${list.length === 0 && html`<${Empty}>${filter === 'unassigned' ? 'Every idea is in a session. 🎉' : 'Nothing here.'}<//>`}
     <div class="idea-table">
       ${list.map((i) => {
@@ -674,6 +681,14 @@ function SessionsAdmin({ event, sessions, ideas, participants, base }) {
     ops.create({ title: 'New session', description: '', categoryId: event.categories?.[0]?.id || null, leaders: [] }, []);
     await ops.commit();
   });
+  const [sel, setSel] = useState(new Set());
+  const [merging, setMerging] = useState(false);
+  const chosen = list.filter((s) => sel.has(s.id));
+  const toggle = (id) => {
+    const n = new Set(sel);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setSel(n);
+  };
   return html`<div class="toolbar">
       <span class="muted">${sessions.length} sessions · ${breakoutSlots(event).length * (event.rooms || []).length} schedule cells</span>
       <div class="row">
@@ -685,12 +700,70 @@ function SessionsAdmin({ event, sessions, ideas, participants, base }) {
       </div>
     </div>
     ${sessions.length === 0 && html`<${Empty}>No sessions yet. Select ideas in “Ideas & merging” to create some.<//>`}
+    ${sessions.length > 1 &&
+    html`<div class=${chosen.length ? 'selection-bar active' : 'selection-bar'}>
+      <strong>${chosen.length} selected</strong>
+      <button class="btn small primary" disabled=${chosen.length < 2} onClick=${() => setMerging(true)}>Merge selected sessions</button>
+      ${chosen.length > 0 ? html`<button class="link small" onClick=${() => setSel(new Set())}>clear</button>` : html`<span class="muted small">Tick two or more sessions to combine them.</span>`}
+    </div>`}
     <div class="session-admin-list">
-      ${list.map((s) => html`<${SessionEditor} key=${s.id} s=${s} d=${demand[s.id]} event=${event} ideas=${ideas} sessions=${sessions} base=${base} />`)}
-    </div>`;
+      ${list.map(
+        (s) => html`<${SessionEditor} key=${s.id} s=${s} d=${demand[s.id]} event=${event} ideas=${ideas} sessions=${sessions} base=${base} selected=${sel.has(s.id)} onToggle=${() => toggle(s.id)} />`
+      )}
+    </div>
+    ${merging &&
+    html`<${MergeSessionsModal}
+      event=${event}
+      chosen=${chosen}
+      demand=${demand}
+      participants=${participants}
+      base=${base}
+      onClose=${() => setMerging(false)}
+      onDone=${() => (setMerging(false), setSel(new Set()))}
+    />`}`;
 }
 
-function SessionEditor({ s, d, event, ideas, sessions, base }) {
+// Fold several sessions into the most-wanted one: union of ideas and leaders,
+// the others are deleted. Votes on the deleted sessions are dropped.
+function MergeSessionsModal({ event, chosen, demand, participants, base, onClose, onDone }) {
+  const keep = [...chosen].sort((a, b) => demand[b.id].score - demand[a.id].score)[0];
+  const others = chosen.filter((s) => s.id !== keep.id);
+  const [title, setTitle] = useState(keep.title);
+  const [desc, setDesc] = useState(chosen.map((s) => s.description).filter(Boolean).join(' ').slice(0, 400));
+  const [categoryId, setCategoryId] = useState(keep.categoryId || event.categories?.[0]?.id);
+  const lost = participants.filter((p) => others.some((s) => p.votes?.[s.id] || p.dots?.[s.id])).length;
+  const merge = guard(async (e) => {
+    e.preventDefault();
+    const leaderKey = (l) => l.uid || String(l.name).toLowerCase();
+    const leaders = [];
+    for (const s of chosen) for (const l of s.leaders || []) if (!leaders.some((x) => leaderKey(x) === leaderKey(l))) leaders.push(l);
+    const ideaIds = [...new Set(chosen.flatMap((s) => s.ideaIds || []))];
+    const ops = [
+      { op: 'update', path: `${base}/sessions/${keep.id}`, data: { title: title.trim(), description: desc.trim(), categoryId, leaders, ideaIds } },
+      ...others.flatMap((s) => (s.ideaIds || []).map((id) => ({ op: 'update', path: `${base}/ideas/${id}`, data: { sessionId: keep.id } }))),
+      ...others.map((s) => ({ op: 'delete', path: `${base}/sessions/${s.id}` })),
+    ];
+    await (await backend()).batch(ops);
+    toast(`Merged ${chosen.length} sessions`);
+    onDone();
+  });
+  return html`<${Modal} title=${`Merge ${chosen.length} sessions`} onClose=${onClose}>
+    <ul class="sources">${chosen.map((s) => html`<li>${s.title} <span class="muted small">· demand ${demand[s.id].score}</span></li>`)}</ul>
+    <form class="stack" onSubmit=${merge}>
+      <label>Session title<input value=${title} onInput=${(e) => setTitle(e.target.value)} required maxlength="90" /></label>
+      <label>Description<textarea rows="3" value=${desc} onInput=${(e) => setDesc(e.target.value)}></textarea></label>
+      <label>Topic
+        <select value=${categoryId} onChange=${(e) => setCategoryId(e.target.value)}>
+          ${(event.categories || []).map((c) => html`<option value=${c.id}>${c.name}</option>`)}
+        </select>
+      </label>
+      <p class="small muted">All source ideas and leaders are combined into one session.${lost ? ` ${lost} participant${lost > 1 ? 's have' : ' has'} voted on a session being merged away; those votes won’t carry over.` : ''}</p>
+      <button class="btn primary">Merge into one session</button>
+    </form>
+  <//>`;
+}
+
+function SessionEditor({ s, d, event, ideas, sessions, base, selected, onToggle }) {
   const path = `${base}/sessions/${s.id}`;
   const save = guard(async (patch) => (await backend()).update(path, patch));
   const src = (s.ideaIds || []).map((id) => ideas.find((i) => i.id === id)).filter(Boolean);
@@ -712,7 +785,8 @@ function SessionEditor({ s, d, event, ideas, sessions, base }) {
     ops.detach([i]);
     await ops.commit();
   });
-  return html`<article class="card session-edit" style=${`--c:${event.categories?.find((c) => c.id === s.categoryId)?.color || '#888'}`}>
+  return html`<article class=${`card session-edit${selected ? ' selected' : ''}`} style=${`--c:${event.categories?.find((c) => c.id === s.categoryId)?.color || '#888'}`}>
+    ${onToggle && html`<input type="checkbox" class="session-pick" checked=${selected} onChange=${onToggle} aria-label=${`Select “${s.title}” to merge`} />`}
     <div class="session-edit-main">
       <input class="title-input" value=${s.title} onChange=${(e) => e.target.value.trim() && save({ title: e.target.value.trim() })} aria-label="Session title" />
       <textarea rows="2" value=${s.description || ''} placeholder="Description" onChange=${(e) => save({ description: e.target.value })} aria-label="Description"></textarea>

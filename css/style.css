@@ -434,6 +434,9 @@ textarea { resize: vertical; }
 .session-edit-main select { width: auto; }
 .session-edit-main form.inline { display: inline-flex; }
 .session-edit-main .small-input { width: 150px; }
+.session-edit.selected { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue), var(--shadow); }
+.session-pick { margin-top: 12px; }
+.filter-hint { margin: -4px 0 12px; }
 .title-input { font-weight: 800; font-size: 1.05rem; color: var(--navy); }
 .session-edit-side { width: 150px; flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
 .demand { display: flex; flex-direction: column; align-items: flex-end; }
