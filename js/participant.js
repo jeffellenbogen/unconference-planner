@@ -1,6 +1,6 @@
 import { html, useState, useEffect, useMemo, useRef, mount, useEventData, toast, guard, CategoryTag, DemoBanner, Empty, ScheduleGrid, CategoryBars, LoadError, Logo, StepTracker, getParam, setParam } from './ui.js';
 import { backend, DEL, union } from './backend.js';
-import { normalizeCode, ideaStats, ideaScore, findSimilar, INTEREST_LEVELS, dotsUsed, personalAgenda, fmtTime, uid as newId, categoryScores, participantStep, leadDefaults } from './model.js';
+import { normalizeCode, ideaStats, ideaScore, findSimilar, INTEREST_LEVELS, dotsUsed, personalAgenda, fmtTime, uid as newId, categoryScores, participantStep, leadDefaults, sessionLeaders } from './model.js';
 
 const store = {
   get: (k) => {
@@ -509,7 +509,7 @@ function VoteStatus({ event, sessions, me }) {
   </div>`;
 }
 
-function SessionList({ event, sessions, ideas, me, uid, base, readOnly }) {
+function SessionList({ event, sessions, ideas, participants, me, uid, base, readOnly }) {
   const cats = event.categories || [];
   const groups = cats.map((c) => ({ cat: c, items: sessions.filter((s) => s.categoryId === c.id) }));
   const other = sessions.filter((s) => !cats.some((c) => c.id === s.categoryId));
@@ -523,13 +523,13 @@ function SessionList({ event, sessions, ideas, me, uid, base, readOnly }) {
         ${g.items
           .sort((a, b) => String(a.title).localeCompare(String(b.title)))
           .map(
-            (s) => html`<${SessionCard} key=${s.id} s=${s} cat=${g.cat} event=${event} me=${me} uid=${uid} base=${base} readOnly=${readOnly} sources=${(s.ideaIds || []).map((id) => ideaById[id]).filter(Boolean)} />`
+            (s) => html`<${SessionCard} key=${s.id} s=${s} cat=${g.cat} event=${event} participants=${participants} me=${me} uid=${uid} base=${base} readOnly=${readOnly} sources=${(s.ideaIds || []).map((id) => ideaById[id]).filter(Boolean)} />`
           )}
       </section>`
     )}`;
 }
 
-function SessionCard({ s, cat, event, me, uid, base, readOnly, sources }) {
+function SessionCard({ s, cat, event, participants, me, uid, base, readOnly, sources }) {
   const [showSrc, setShowSrc] = useState(false);
   const path = `${base}/participants/${uid}`;
   const patch = guard(async (p) => (await backend()).update(path, p));
@@ -571,7 +571,13 @@ function SessionCard({ s, cat, event, me, uid, base, readOnly, sources }) {
   return html`<article class=${`session card${vote ? ' voted-' + vote : ''}${dots ? ' has-dots' : ''}`} style=${cat ? `--c:${cat.color}` : ''}>
     <h4>${s.title}</h4>
     ${s.description && html`<p>${s.description}</p>`}
-    ${s.leaders?.length > 0 && html`<p class="small leads-line">Led by ${s.leaders.map((l) => l.name).join(', ')}</p>`}
+    ${(() => {
+      // Live: confirmed leaders plus anyone who has said "I can lead" (you show as "You").
+      const leaders = sessionLeaders(event, s, participants || []);
+      if (!leaders.length) return null;
+      const names = leaders.map((l) => (l.uid === uid ? 'You' : l.name)).sort((a, b) => (a === 'You' ? -1 : b === 'You' ? 1 : 0));
+      return html`<p class="small leads-line">🙋 ${readOnly ? 'Led by' : 'Leading'}: <strong>${names.join(', ')}</strong></p>`;
+    })()}
     ${sources.length > 1 &&
     html`<button class="link small" aria-expanded=${showSrc} onClick=${() => setShowSrc(!showSrc)}>${showSrc ? 'Hide' : 'Combines'} ${sources.length} ideas</button>
       ${showSrc && html`<ul class="sources">${sources.map((i) => html`<li>${i.title}</li>`)}</ul>`}`}
@@ -604,7 +610,7 @@ function YourDay(ctx) {
       <button class=${view === 'mine' ? 'seg-btn on must' : 'seg-btn'} aria-pressed=${view === 'mine'} onClick=${() => setView('mine')}>Your day</button>
       <button class=${view === 'all' ? 'seg-btn on must' : 'seg-btn'} aria-pressed=${view === 'all'} onClick=${() => setView('all')}>Full schedule</button>
     </div>
-    ${view === 'mine' ? html`<${MyDay} ...${ctx} rows=${rows} />` : html`<${ScheduleGrid} event=${ctx.event} sessions=${ctx.sessions} cells=${cells} mine=${mine} />`}`;
+    ${view === 'mine' ? html`<${MyDay} ...${ctx} rows=${rows} />` : html`<${ScheduleGrid} event=${ctx.event} sessions=${ctx.sessions} cells=${cells} participants=${ctx.participants} mine=${mine} />`}`;
 }
 
 function MyDay({ event, rows }) {

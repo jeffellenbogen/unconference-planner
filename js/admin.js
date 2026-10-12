@@ -939,7 +939,7 @@ function ScheduleAdmin({ event, sessions, participants, base }) {
     toast('Schedule generated');
   });
   const sorted = [...sessions].sort((a, b) => demand[b.id].score - demand[a.id].score);
-  const text = scheduleText(event, sessions, cells);
+  const text = scheduleText(event, sessions, cells, participants);
   const csv = () => {
     const rows = [['Start', 'End', 'Block', ...rooms.map((r) => r.name)]];
     for (const item of event.agenda || [])
@@ -1030,7 +1030,7 @@ function ScheduleAdmin({ event, sessions, participants, base }) {
 
     <section class="card print-area">
       <h3>Preview</h3>
-      <${ScheduleGrid} event=${event} sessions=${sessions} cells=${cells} />
+      <${ScheduleGrid} event=${event} sessions=${sessions} cells=${cells} participants=${participants} />
     </section>`;
 }
 

@@ -1,6 +1,6 @@
 import { html, render, useState, useEffect, useMemo, useRef, useCallback } from '../vendor/preact-htm.module.js';
 import { backend, DEMO } from './backend.js';
-import { PHASES, STEPS, participantStep, fmtTime } from './model.js';
+import { PHASES, STEPS, participantStep, fmtTime, sessionLeaders } from './model.js';
 
 export { html, render, useState, useEffect, useMemo, useRef, useCallback };
 
@@ -158,7 +158,7 @@ export function Empty({ children }) {
 }
 
 // Agenda with the room grid for breakout slots. `mine` = { [slotId]: sessionId } to highlight.
-export function ScheduleGrid({ event, sessions, cells, mine = {}, big = false }) {
+export function ScheduleGrid({ event, sessions, cells, participants = [], mine = {}, big = false }) {
   const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
   const cats = Object.fromEntries((event.categories || []).map((c) => [c.id, c]));
   const rooms = event.rooms || [];
@@ -176,7 +176,10 @@ export function ScheduleGrid({ event, sessions, cells, mine = {}, big = false })
                   <div class="room">${r.name}</div>
                   ${s
                     ? html`<div class="title">${s.title}</div>
-                        ${s.leaders?.length ? html`<div class="leaders">${s.leaders.map((l) => l.name).join(', ')}</div>` : ''}`
+                        ${(() => {
+                          const leaders = sessionLeaders(event, s, participants);
+                          return leaders.length ? html`<div class="leaders">Led by ${leaders.map((l) => l.name).join(', ')}</div>` : '';
+                        })()}`
                     : html`<div class="title muted">Open</div>`}
                 </div>`;
               })}

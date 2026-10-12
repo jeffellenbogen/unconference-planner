@@ -289,6 +289,28 @@ function participantLeads(p, session) {
   return (session.leaders || []).some((l) => (l.uid ? l.uid === p.id : String(l.name).trim().toLowerCase() === String(p.name).trim().toLowerCase()));
 }
 
+const leaderKey = (l) => (l.uid ? `u:${l.uid}` : `n:${String(l.name).trim().toLowerCase()}`);
+
+// Everyone currently set to lead a session, live: organizer-confirmed leaders
+// (unless that person has since said no while voting) plus participants with a
+// valid "I can lead" offer. Returns [{ uid, name }].
+export function sessionLeaders(event, session, participants = []) {
+  const byUid = Object.fromEntries(participants.map((p) => [p.id, p]));
+  const out = [];
+  const seen = new Set();
+  const add = (l) => {
+    const k = leaderKey(l);
+    if (!seen.has(k)) seen.add(k), out.push(l);
+  };
+  for (const l of session.leaders || []) {
+    const p = l.uid && byUid[l.uid];
+    if (p && p.leads?.[session.id] === false) continue;
+    add({ uid: l.uid || null, name: p ? p.name : l.name });
+  }
+  for (const p of participants) if (offersToLead(event, p, session.id)) add({ uid: p.id, name: p.name });
+  return out;
+}
+
 export function emptyCells(event) {
   const cells = {};
   for (const slot of breakoutSlots(event)) {
@@ -302,7 +324,7 @@ export function emptyCells(event) {
 function conflictMatrix(event, participants, sessions) {
   const ids = sessions.map((s) => s.id);
   const W = participants.map((p) => ids.map((id) => prefWeight(event, p, id)));
-  const lk = sessions.map(leaderKeys);
+  const lk = sessions.map((s) => sessionLeaders(event, s, participants).map(leaderKey));
   const M = ids.map(() => ids.map(() => 0));
   for (let a = 0; a < ids.length; a++)
     for (let b = a + 1; b < ids.length; b++) {
@@ -461,7 +483,8 @@ export function evaluateSchedule(event, participants, sessions, cells) {
       for (let b = a + 1; b < sids.length; b++) {
         const both = participants.filter((p) => prefWeight(event, p, sids[a]) >= 3 && prefWeight(event, p, sids[b]) >= 3);
         if (both.length) conflicts.push({ slotId: sl.id, a: sids[a], b: sids[b], people: both.map((p) => p.name) });
-        const shared = leaderKeys(byId[sids[a]]).filter((k) => leaderKeys(byId[sids[b]]).includes(k));
+        const ka = sessionLeaders(event, byId[sids[a]], participants).map(leaderKey);
+        const shared = sessionLeaders(event, byId[sids[b]], participants).map(leaderKey).filter((k) => ka.includes(k));
         if (shared.length) leaderClashes.push({ slotId: sl.id, a: sids[a], b: sids[b] });
       }
     for (const p of participants) {
@@ -495,7 +518,7 @@ export function personalAgenda(event, p, sessions, cells) {
     if (item.kind !== 'breakout') return { item };
     const options = Object.entries(cells?.[item.id] || {})
       .filter(([, c]) => c?.sid && byId[c.sid])
-      .map(([roomId, c]) => ({ session: byId[c.sid], room: rooms[roomId], weight: prefWeight(event, p, c.sid), leading: participantLeads(p, byId[c.sid]) }));
+      .map(([roomId, c]) => ({ session: byId[c.sid], room: rooms[roomId], weight: prefWeight(event, p, c.sid), leading: sessionLeaders(event, byId[c.sid], [p]).some((l) => l.uid === p.id || (!l.uid && participantLeads(p, { leaders: [l] }))) }));
     const sorted = [...options].sort((a, b) => b.leading - a.leading || b.weight - a.weight);
     const pick = sorted[0] && (sorted[0].leading || sorted[0].weight > 0) ? sorted[0] : null;
     return { item, pick, options: sorted };
@@ -548,7 +571,7 @@ export function leadersFromIdeas(ideas) {
   return [...seen.values()];
 }
 
-export function scheduleText(event, sessions, cells) {
+export function scheduleText(event, sessions, cells, participants = []) {
   const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
   const out = [`${event.title}`, ''];
   for (const item of event.agenda || []) {
@@ -556,7 +579,8 @@ export function scheduleText(event, sessions, cells) {
     if (item.kind === 'breakout')
       for (const r of event.rooms || []) {
         const s = byId[cells?.[item.id]?.[r.id]?.sid];
-        if (s) out.push(`    ${r.name}: ${s.title}${s.leaders?.length ? ` (${s.leaders.map((l) => l.name).join(', ')})` : ''}`);
+        const leaders = s ? sessionLeaders(event, s, participants) : [];
+        if (s) out.push(`    ${r.name}: ${s.title}${leaders.length ? ` (${leaders.map((l) => l.name).join(', ')})` : ''}`);
       }
   }
   return out.join('\n');

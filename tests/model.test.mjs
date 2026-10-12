@@ -16,6 +16,7 @@ import {
   participantStep,
   prefWeight,
   leadDefaults,
+  sessionLeaders,
 } from '../js/model.js';
 
 function event(mode = 'interest', rooms = 2) {
@@ -195,4 +196,24 @@ test('Step 1 lead offers carry over to sessions, backed by a vote', () => {
   assert.deepEqual(r3.patch, { 'votes.a': 'must', 'leads.a': true });
   // Nothing to do once decided
   assert.equal(leadDefaults(event('interest'), { id: 'me', votes: { a: 'must' }, leads: { a: true, c: false, d: false } }, ss, ideas), null);
+});
+
+test('session leaders are live: confirmed leaders plus valid offers, minus declines', () => {
+  const ev = event('dots');
+  const s = S('a', { leaders: [{ uid: 'u1', name: 'Una' }, { uid: null, name: 'Guest Speaker' }, { uid: 'u3', name: 'Cy' }] });
+  const ps = [
+    { id: 'u1', name: 'Una' }, // confirmed, no decision → still leading
+    { id: 'u2', name: 'Bo', dots: { a: 1 }, leads: { a: true } }, // offered with a dot → leading
+    { id: 'u3', name: 'Cy', leads: { a: false } }, // confirmed but said no while voting → dropped
+    { id: 'u4', name: 'Di', leads: { a: true } }, // offer without a dot → not counted
+  ];
+  assert.deepEqual(sessionLeaders(ev, s, ps).map((l) => l.name), ['Una', 'Guest Speaker', 'Bo']);
+});
+
+test('scheduler keeps someone who offered to lead two sessions out of the same block', () => {
+  const ev = event('dots', 2);
+  const ss = ['a', 'b', 'c', 'd'].map((id) => S(id));
+  const ps = [{ id: 'L', name: 'Lee', dots: { a: 1, b: 1 }, leads: { a: true, b: true } }];
+  const cells = buildSchedule(ev, ps, ss);
+  assert.equal(evaluateSchedule(ev, ps, ss, cells).leaderClashes.length, 0);
 });

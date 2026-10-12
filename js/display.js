@@ -63,7 +63,7 @@ function Display() {
           html`<h2>Sessions so far <span class="muted">· ${sessions.length}</span></h2>
             <${SessionWall} event=${event} sessions=${sessions} />`}
           ${(phase === 'vote' || (phase === 'schedule' && !published)) && html`<${VoteTally} event=${event} participants=${participants} sessions=${sessions} />`}
-          ${published && html`<${ScheduleGrid} event=${event} sessions=${sessions} cells=${event.schedule.cells} big=${true} />`}
+          ${published && html`<${ScheduleGrid} event=${event} sessions=${sessions} cells=${event.schedule.cells} participants=${participants} big=${true} />`}
         </section>
       </main>
     </div>
