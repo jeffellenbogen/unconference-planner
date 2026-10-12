@@ -166,15 +166,48 @@ function NowCard({ event, me, sessions }) {
 // ---------------- Step 1: guided ideas ----------------
 
 function IdeasFlow(ctx) {
-  const key = `unconf:part:${ctx.event.id}`;
+  const key = `unconf:part:${ctx.event.id}:${ctx.uid}`;
   const [part, setPartState] = useState(() => store.get(key) || (ctx.me.catRank?.length ? 'back' : 'rank'));
+  const [highlight, setHighlight] = useState(new Set());
   const setPart = (p) => {
     setPartState(p);
     store.set(key, p);
+    if (p !== 'back') setHighlight(new Set());
     document.getElementById('parts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   const backed = ctx.ideas.filter((i) => i.upvotes?.[ctx.uid]).length;
   const mine = ctx.ideas.filter((i) => i.authorUid === ctx.uid).length;
+
+  // New-idea notices. Remember which ideas this person has seen (per event, per device);
+  // on a first visit everything already on the board counts as seen.
+  const seenKey = `unconf:seen:${ctx.event.id}:${ctx.uid}`;
+  const [seen, setSeen] = useState(() => {
+    try {
+      const raw = store.get(seenKey);
+      if (raw) return new Set(JSON.parse(raw));
+    } catch {}
+    return new Set(ctx.ideas.map((i) => i.id));
+  });
+  useEffect(() => {
+    if (!store.get(seenKey)) store.set(seenKey, JSON.stringify([...seen]));
+  }, []);
+  const markSeen = (ids) => {
+    const next = new Set([...seen, ...ids]);
+    setSeen(next);
+    store.set(seenKey, JSON.stringify([...next]));
+  };
+  const engaged = !!ctx.me.catRank?.length || backed > 0;
+  const fresh = ctx.ideas.filter((i) => !seen.has(i.id) && i.authorUid !== ctx.uid).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  // Until someone has ranked or backed, everything is new to them anyway — no notice.
+  useEffect(() => {
+    if (!engaged && fresh.length) markSeen(fresh.map((i) => i.id));
+  }, [engaged, fresh.length]);
+  const showNew = () => {
+    setHighlight(new Set(fresh.map((i) => i.id)));
+    markSeen(fresh.map((i) => i.id));
+    setPartState('back');
+    store.set(key, 'back');
+  };
   const parts = [
     { id: 'rank', label: 'Rank topics', done: !!ctx.me.catRank?.length },
     { id: 'back', label: 'Back ideas', done: backed > 0 },
@@ -188,8 +221,21 @@ function IdeasFlow(ctx) {
       )}
     </nav>
     ${part === 'rank' && html`<${RankPart} ...${ctx} onNext=${() => setPart('back')} />`}
-    ${part === 'back' && html`<${BackPart} ...${ctx} backed=${backed} onNext=${() => setPart('suggest')} />`}
-    ${part === 'suggest' && html`<${SuggestPart} ...${ctx} mine=${mine} onBrowse=${() => setPart('back')} />`}`;
+    ${part === 'back' && html`<${BackPart} ...${ctx} backed=${backed} highlight=${highlight} onNext=${() => setPart('suggest')} />`}
+    ${part === 'suggest' && html`<${SuggestPart} ...${ctx} mine=${mine} onBrowse=${() => setPart('back')} />`}
+    ${engaged && fresh.length > 0 && html`<${NewIdeasNotice} ideas=${fresh} onShow=${showNew} onDismiss=${() => markSeen(fresh.map((i) => i.id))} />`}`;
+}
+
+function NewIdeasNotice({ ideas, onShow, onDismiss }) {
+  return html`<div class="new-ideas" role="status" aria-live="polite">
+    <span class="new-ideas-icon" aria-hidden="true">✨</span>
+    <div class="new-ideas-text">
+      <strong>${ideas.length === 1 ? 'New idea added' : `${ideas.length} new ideas added`}</strong>
+      <span>“${ideas[0].title}”${ideas.length > 1 ? ` and ${ideas.length - 1} more` : ''}</span>
+    </div>
+    <button class="btn small primary" onClick=${onShow}>Take a look</button>
+    <button class="icon-btn" aria-label="Dismiss new idea notice" onClick=${onDismiss}>✕</button>
+  </div>`;
 }
 
 function rankedCategories(event, me) {
@@ -249,9 +295,15 @@ function RankPart({ event, participants, me, uid, base, onNext }) {
     </details>`}`;
 }
 
-function BackPart({ event, ideas, me, uid, base, backed, onNext }) {
+function BackPart({ event, ideas, me, uid, base, backed, highlight, onNext }) {
   const [cat, setCat] = useState('all');
   const [sort, setSort] = useState('popular');
+  // Coming from a new-idea notice: show all topics and scroll to the first new card.
+  useEffect(() => {
+    if (!highlight?.size) return;
+    setCat('all');
+    setTimeout(() => document.querySelector('.idea.is-new')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  }, [highlight]);
   const cats = Object.fromEntries((event.categories || []).map((c) => [c.id, c]));
   const list = ideas
     .filter((i) => cat === 'all' || i.categoryId === cat)
@@ -274,7 +326,7 @@ function BackPart({ event, ideas, me, uid, base, backed, onNext }) {
     </div>
     ${list.length === 0 && html`<${Empty}>No ideas in this topic yet. <button class="link" onClick=${onNext}>Suggest one</button><//>`}
     <div class="idea-list">
-      ${list.map((i) => html`<${IdeaCard} key=${i.id} idea=${i} cat=${cats[i.categoryId]} me=${me} uid=${uid} base=${base} />`)}
+      ${list.map((i) => html`<${IdeaCard} key=${i.id} idea=${i} cat=${cats[i.categoryId]} me=${me} uid=${uid} base=${base} isNew=${highlight?.has(i.id)} />`)}
     </div>
     <div class="sticky-next">
       <span>${backed ? html`You’ve backed <strong>${backed}</strong> idea${backed > 1 ? 's' : ''}` : 'Back at least one idea'}</span>
@@ -282,7 +334,7 @@ function BackPart({ event, ideas, me, uid, base, backed, onNext }) {
     </div>`;
 }
 
-function IdeaCard({ idea, cat, me, uid, base, readOnly }) {
+function IdeaCard({ idea, cat, me, uid, base, readOnly, isNew }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const s = ideaStats(idea);
@@ -297,9 +349,10 @@ function IdeaCard({ idea, cat, me, uid, base, readOnly }) {
     setText('');
   });
   const leaders = Object.values(idea.leads || {});
-  return html`<article class=${`idea card${voted ? ' backed' : ''}`} style=${cat ? `--c:${cat.color}` : ''}>
+  return html`<article class=${`idea card${voted ? ' backed' : ''}${isNew ? ' is-new' : ''}`} style=${cat ? `--c:${cat.color}` : ''}>
     <div class="idea-body">
       <div class="idea-head">
+        ${isNew && html`<span class="badge new">New</span>`}
         <${CategoryTag} cat=${cat} />
         ${idea.authorName && idea.authorName !== 'Organizer' && html`<span class="muted small">from ${idea.authorName}</span>`}
       </div>
