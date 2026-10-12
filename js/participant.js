@@ -626,7 +626,7 @@ function MyDay({ event, rows }) {
                   : html`<div class="pick open"><strong>Your choice</strong> <span class="muted small">— pick any session below</span></div>`}
                 ${options.filter((o) => o !== pick).length > 0 &&
                 html`<div class="alts small">
-                  ${pick ? 'Also running: ' : ''}${options
+                  ${pick ? 'Other concurrent sessions: ' : ''}${options
                     .filter((o) => o !== pick)
                     .map((o, i) => html`${i ? ' · ' : ''}${o.session.title} <span class="muted">(${o.room?.name})</span>`)}
                 </div>`}`}
