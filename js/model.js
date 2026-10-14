@@ -54,10 +54,9 @@ export function count(obj) {
   return obj ? Object.keys(obj).length : 0;
 }
 
-// Wi-Fi QR payload (the format phone cameras understand to join a network).
-export function wifiQr(ssid, password) {
-  const esc = (v) => String(v || '').replace(/([\\;,:"])/g, '\\$1');
-  return password ? `WIFI:T:WPA;S:${esc(ssid)};P:${esc(password)};;` : `WIFI:T:nopass;S:${esc(ssid)};;`;
+// A link as people should type it: no protocol, no trailing slash.
+export function displayUrl(url) {
+  return String(url || '').trim().replace(/^https?:\/\//i, '').replace(/\/$/, '');
 }
 
 export function fmtTime(t) {

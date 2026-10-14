@@ -17,7 +17,7 @@ import {
   prefWeight,
   leadDefaults,
   sessionLeaders,
-  wifiQr,
+  displayUrl,
 } from '../js/model.js';
 
 function event(mode = 'interest', rooms = 2) {
@@ -219,8 +219,8 @@ test('scheduler keeps someone who offered to lead two sessions out of the same b
   assert.equal(evaluateSchedule(ev, ps, ss, cells).leaderClashes.length, 0);
 });
 
-test('Wi-Fi QR payload', () => {
-  assert.equal(wifiQr('School-Guest', 'pass123'), 'WIFI:T:WPA;S:School-Guest;P:pass123;;');
-  assert.equal(wifiQr('Guest', ''), 'WIFI:T:nopass;S:Guest;;');
-  assert.equal(wifiQr('a;b', 'p:w'), 'WIFI:T:WPA;S:a\\;b;P:p\\:w;;');
+test('displayUrl strips protocol and trailing slash', () => {
+  assert.equal(displayUrl('https://bit.ly/Example '), 'bit.ly/Example');
+  assert.equal(displayUrl('HTTP://example.org/app/'), 'example.org/app');
+  assert.equal(displayUrl(''), '');
 });

@@ -1,6 +1,6 @@
 import { html, useState, useEffect, mount, useEventData, ScheduleGrid, CategoryBars, CategoryTag, QR, LoadError, Logo, StepTracker, getParam, siteUrl } from './ui.js';
 import { backend } from './backend.js';
-import { normalizeCode, categoryScores, ideaStats, ideaScore, sessionDemand, participantStep, STEPS, wifiQr } from './model.js';
+import { normalizeCode, categoryScores, ideaStats, ideaScore, sessionDemand, participantStep, STEPS, displayUrl } from './model.js';
 
 function Display() {
   const code = normalizeCode(getParam('code') || '');
@@ -20,7 +20,7 @@ function Display() {
   const phase = event.phase || 'setup';
   const published = phase === 'schedule' && event.schedule?.published;
   const joinUrl = siteUrl('index.html', event.id);
-  const shortUrl = joinUrl.replace(/^https?:\/\//, '').replace(/index\.html.*$/, '').replace(/\/$/, '');
+  const shortUrl = displayUrl(event.shortLink) || displayUrl(joinUrl.replace(/index\.html.*$/, ''));
   const now = nowCopy(event);
   const { step, state } = participantStep(event);
 
@@ -35,19 +35,15 @@ function Display() {
         ${event.wifi?.ssid &&
         html`<section class="wifi-box" aria-label="Wi-Fi">
             <p class="join-label"><span class="join-num">1</span>Connect to Wi-Fi</p>
-            <div class="wifi-row">
-              <${QR} text=${wifiQr(event.wifi.ssid, event.wifi.password)} size=${4} />
-              <dl class="wifi-creds">
-                <dt>Network</dt>
-                <dd>${event.wifi.ssid}</dd>
-                ${event.wifi.password && html`<dt>Password</dt><dd>${event.wifi.password}</dd>`}
-              </dl>
-            </div>
+            <dl class="wifi-creds">
+              <div><dt>Network</dt><dd>${event.wifi.ssid}</dd></div>
+              ${event.wifi.password && html`<div><dt>Password</dt><dd>${event.wifi.password}</dd></div>`}
+            </dl>
           </section>`}
         <p class="join-label">${event.wifi?.ssid && html`<span class="join-num">2</span>`}${event.wifi?.ssid ? 'Open the app' : 'Join on your phone or laptop'}</p>
         <${QR} text=${joinUrl} size=${6} />
         <p class="join-or">or go to</p>
-        <p class="join-url">${shortUrl}</p>
+        <p class=${event.shortLink ? 'join-url short' : 'join-url'}>${shortUrl}</p>
         <div class="join-code"><span>Code</span><strong>${event.id}</strong></div>
         <p class="join-count"><strong>${participants.length}</strong> joined</p>
         <button class="link small fs-btn" onClick=${() => document.documentElement.requestFullscreen?.()}>Full screen</button>

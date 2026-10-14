@@ -24,6 +24,7 @@ import {
   scheduleText,
   fmtTime,
   emptyCells,
+  displayUrl,
 } from './model.js';
 
 // ---------------- Auth & event picker ----------------
@@ -287,6 +288,7 @@ function Overview({ event, participants, ideas, sessions, base }) {
         <${QR} text=${joinUrl} />
         <div>
           <p>Go to <a href=${joinUrl} target="_blank" rel="noopener">${joinUrl.replace(/^https?:\/\//, '').replace(/\?.*/, '')}</a></p>
+          ${event.shortLink && html`<p>Short link: <strong>${displayUrl(event.shortLink)}</strong></p>`}
           <p>Code: <strong class="code">${event.id}</strong></p>
           ${event.wifi?.ssid && html`<p class="small">Wi-Fi: <strong>${event.wifi.ssid}</strong>${event.wifi.password ? html` · password <strong>${event.wifi.password}</strong>` : ''}</p>`}
           <button class="btn small" onClick=${() => copyText(joinUrl, 'Join link copied')}>Copy join link</button>
@@ -1039,7 +1041,7 @@ function ScheduleAdmin({ event, sessions, participants, base }) {
 // ---------------- Settings ----------------
 
 function Settings({ event, participants, ideas, sessions, base, onDeleted }) {
-  const [draft, setDraft] = useState(() => ({ wifi: { ssid: '', password: '' }, ...pick(event, ['title', 'tagline', 'categories', 'rooms', 'agenda', 'roles', 'voting', 'wifi']) }));
+  const [draft, setDraft] = useState(() => ({ shortLink: '', wifi: { ssid: '', password: '' }, ...pick(event, ['title', 'tagline', 'categories', 'rooms', 'agenda', 'roles', 'voting', 'wifi', 'shortLink']) }));
   const [dirty, setDirty] = useState(false);
   const up = (k, v) => (setDraft({ ...draft, [k]: v }), setDirty(true));
   const listOp = (k) => ({
@@ -1108,6 +1110,9 @@ function Settings({ event, participants, ideas, sessions, base, onDeleted }) {
         <h3>Basics</h3>
         <label>Title<input value=${draft.title} onInput=${(e) => up('title', e.target.value)} /></label>
         <label>Welcome line<input value=${draft.tagline || ''} onInput=${(e) => up('tagline', e.target.value)} /></label>
+        <label>Short link <span class="muted small">(optional — shown on the projector instead of the long address)</span>
+          <input value=${draft.shortLink || ''} placeholder="e.g. bit.ly/your-event" onInput=${(e) => up('shortLink', e.target.value.trim())} autocomplete="off" />
+        </label>
         <fieldset class="wifi-fields">
           <legend>Wi-Fi for the day <span class="muted">(optional — shown on the projector)</span></legend>
           <label>Network name<input value=${draft.wifi?.ssid || ''} placeholder="e.g. ACIS-T" onInput=${(e) => up('wifi', { ...draft.wifi, ssid: e.target.value.trim() })} autocomplete="off" /></label>
