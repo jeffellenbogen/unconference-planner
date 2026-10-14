@@ -220,7 +220,7 @@ test('scheduler keeps someone who offered to lead two sessions out of the same b
 });
 
 test('Wi-Fi QR payload', () => {
-  assert.equal(wifiQr('ACIS-T', 'Fun2gether'), 'WIFI:T:WPA;S:ACIS-T;P:Fun2gether;;');
+  assert.equal(wifiQr('School-Guest', 'pass123'), 'WIFI:T:WPA;S:School-Guest;P:pass123;;');
   assert.equal(wifiQr('Guest', ''), 'WIFI:T:nopass;S:Guest;;');
   assert.equal(wifiQr('a;b', 'p:w'), 'WIFI:T:WPA;S:a\\;b;P:p\\:w;;');
 });
