@@ -17,6 +17,7 @@ import {
   prefWeight,
   leadDefaults,
   sessionLeaders,
+  wifiQr,
 } from '../js/model.js';
 
 function event(mode = 'interest', rooms = 2) {
@@ -216,4 +217,10 @@ test('scheduler keeps someone who offered to lead two sessions out of the same b
   const ps = [{ id: 'L', name: 'Lee', dots: { a: 1, b: 1 }, leads: { a: true, b: true } }];
   const cells = buildSchedule(ev, ps, ss);
   assert.equal(evaluateSchedule(ev, ps, ss, cells).leaderClashes.length, 0);
+});
+
+test('Wi-Fi QR payload', () => {
+  assert.equal(wifiQr('ACIS-T', 'Fun2gether'), 'WIFI:T:WPA;S:ACIS-T;P:Fun2gether;;');
+  assert.equal(wifiQr('Guest', ''), 'WIFI:T:nopass;S:Guest;;');
+  assert.equal(wifiQr('a;b', 'p:w'), 'WIFI:T:WPA;S:a\\;b;P:p\\:w;;');
 });

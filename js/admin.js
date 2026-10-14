@@ -127,7 +127,7 @@ function CreateEvent({ user, events, onClose, onCreated }) {
     else if (from === 'blank') t = blankTemplate();
     else {
       const src = events.find((x) => x.id === from);
-      t = { ...techPdTemplate(), ...pick(src, ['tagline', 'categories', 'rooms', 'agenda', 'roles', 'voting']), seeds: [] };
+      t = { ...techPdTemplate(), ...pick(src, ['tagline', 'categories', 'rooms', 'agenda', 'roles', 'voting', 'wifi']), seeds: [] };
     }
     await b.set(`events/${id}`, {
       title: title.trim(),
@@ -140,6 +140,7 @@ function CreateEvent({ user, events, onClose, onCreated }) {
       agenda: t.agenda,
       roles: t.roles,
       voting: t.voting,
+      ...(t.wifi ? { wifi: t.wifi } : {}),
       schedule: { published: false, cells: {} },
     });
     if (t.seeds.length)
@@ -287,6 +288,7 @@ function Overview({ event, participants, ideas, sessions, base }) {
         <div>
           <p>Go to <a href=${joinUrl} target="_blank" rel="noopener">${joinUrl.replace(/^https?:\/\//, '').replace(/\?.*/, '')}</a></p>
           <p>Code: <strong class="code">${event.id}</strong></p>
+          ${event.wifi?.ssid && html`<p class="small">Wi-Fi: <strong>${event.wifi.ssid}</strong>${event.wifi.password ? html` · password <strong>${event.wifi.password}</strong>` : ''}</p>`}
           <button class="btn small" onClick=${() => copyText(joinUrl, 'Join link copied')}>Copy join link</button>
         </div>
       </div>
@@ -1037,7 +1039,7 @@ function ScheduleAdmin({ event, sessions, participants, base }) {
 // ---------------- Settings ----------------
 
 function Settings({ event, participants, ideas, sessions, base, onDeleted }) {
-  const [draft, setDraft] = useState(() => pick(event, ['title', 'tagline', 'categories', 'rooms', 'agenda', 'roles', 'voting']));
+  const [draft, setDraft] = useState(() => ({ wifi: { ssid: '', password: '' }, ...pick(event, ['title', 'tagline', 'categories', 'rooms', 'agenda', 'roles', 'voting', 'wifi']) }));
   const [dirty, setDirty] = useState(false);
   const up = (k, v) => (setDraft({ ...draft, [k]: v }), setDirty(true));
   const listOp = (k) => ({
@@ -1106,6 +1108,11 @@ function Settings({ event, participants, ideas, sessions, base, onDeleted }) {
         <h3>Basics</h3>
         <label>Title<input value=${draft.title} onInput=${(e) => up('title', e.target.value)} /></label>
         <label>Welcome line<input value=${draft.tagline || ''} onInput=${(e) => up('tagline', e.target.value)} /></label>
+        <fieldset class="wifi-fields">
+          <legend>Wi-Fi for the day <span class="muted">(optional — shown on the projector)</span></legend>
+          <label>Network name<input value=${draft.wifi?.ssid || ''} placeholder="e.g. ACIS-T" onInput=${(e) => up('wifi', { ...draft.wifi, ssid: e.target.value.trim() })} autocomplete="off" /></label>
+          <label>Password<input value=${draft.wifi?.password || ''} placeholder="leave blank if open" onInput=${(e) => up('wifi', { ...draft.wifi, password: e.target.value })} autocomplete="off" /></label>
+        </fieldset>
         <label>Participant roles <span class="muted small">(comma separated, optional)</span>
           <input value=${(draft.roles || []).join(', ')} onInput=${(e) => up('roles', e.target.value.split(',').map((x) => x.trim()).filter(Boolean))} />
         </label>

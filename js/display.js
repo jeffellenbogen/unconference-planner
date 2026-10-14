@@ -1,6 +1,6 @@
 import { html, useState, useEffect, mount, useEventData, ScheduleGrid, CategoryBars, CategoryTag, QR, LoadError, Logo, StepTracker, getParam, siteUrl } from './ui.js';
 import { backend } from './backend.js';
-import { normalizeCode, categoryScores, ideaStats, ideaScore, sessionDemand, participantStep, STEPS } from './model.js';
+import { normalizeCode, categoryScores, ideaStats, ideaScore, sessionDemand, participantStep, STEPS, wifiQr } from './model.js';
 
 function Display() {
   const code = normalizeCode(getParam('code') || '');
@@ -32,7 +32,19 @@ function Display() {
     </header>
     <div class="proj-body">
       <aside class="proj-join" aria-label="How to join">
-        <p class="join-label">Join on your phone or laptop</p>
+        ${event.wifi?.ssid &&
+        html`<section class="wifi-box" aria-label="Wi-Fi">
+            <p class="join-label"><span class="join-num">1</span>Connect to Wi-Fi</p>
+            <div class="wifi-row">
+              <${QR} text=${wifiQr(event.wifi.ssid, event.wifi.password)} size=${4} />
+              <dl class="wifi-creds">
+                <dt>Network</dt>
+                <dd>${event.wifi.ssid}</dd>
+                ${event.wifi.password && html`<dt>Password</dt><dd>${event.wifi.password}</dd>`}
+              </dl>
+            </div>
+          </section>`}
+        <p class="join-label">${event.wifi?.ssid && html`<span class="join-num">2</span>`}${event.wifi?.ssid ? 'Open the app' : 'Join on your phone or laptop'}</p>
         <${QR} text=${joinUrl} size=${6} />
         <p class="join-or">or go to</p>
         <p class="join-url">${shortUrl}</p>
@@ -74,7 +86,7 @@ function nowCopy(event) {
   const phase = event.phase || 'setup';
   const dots = event.voting?.mode === 'dots';
   return {
-    setup: { eyebrow: 'Welcome', title: 'Grab your phone or laptop and join', body: 'Scan the code or go to the link, then enter the code. We’ll start in a moment.' },
+    setup: { eyebrow: 'Welcome', title: 'Grab your phone or laptop and join', body: event.wifi?.ssid ? 'Connect to the Wi-Fi, then open the app. We’ll start in a moment.' : 'Scan the code or go to the link, then enter the code. We’ll start in a moment.' },
     ideas: { title: 'Share your ideas', body: 'Rank the big topics, back the ideas you’d attend, and suggest your own.' },
     curate: { eyebrow: 'Hang tight', title: 'Building sessions from your ideas', body: 'We’re combining similar ideas into sessions. Voting opens next.' },
     vote: {

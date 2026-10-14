@@ -54,6 +54,12 @@ export function count(obj) {
   return obj ? Object.keys(obj).length : 0;
 }
 
+// Wi-Fi QR payload (the format phone cameras understand to join a network).
+export function wifiQr(ssid, password) {
+  const esc = (v) => String(v || '').replace(/([\\;,:"])/g, '\\$1');
+  return password ? `WIFI:T:WPA;S:${esc(ssid)};P:${esc(password)};;` : `WIFI:T:nopass;S:${esc(ssid)};;`;
+}
+
 export function fmtTime(t) {
   if (!t) return '';
   const [h, m] = t.split(':').map(Number);
