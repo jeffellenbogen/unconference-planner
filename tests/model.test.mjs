@@ -18,6 +18,7 @@ import {
   leadDefaults,
   sessionLeaders,
   displayUrl,
+  leftovers,
 } from '../js/model.js';
 
 function event(mode = 'interest', rooms = 2) {
@@ -223,4 +224,20 @@ test('displayUrl strips protocol and trailing slash', () => {
   assert.equal(displayUrl('https://bit.ly/Example '), 'bit.ly/Example');
   assert.equal(displayUrl('HTTP://example.org/app/'), 'example.org/app');
   assert.equal(displayUrl(''), '');
+});
+
+test('leftovers finds backing from removed people only', () => {
+  const ideas = [
+    { id: 'i1', upvotes: { a: true, gone1: true }, leads: { gone1: 'G' }, comments: [{ uid: 'gone1', text: 'x' }, { uid: 'a', text: 'y' }, { text: 'no uid' }] },
+    { id: 'i2', upvotes: { a: true }, leads: {}, comments: [] },
+  ];
+  const sessions = [
+    { id: 's1', leaders: [{ uid: 'gone1', name: 'G' }, { name: 'Typed in' }] },
+    { id: 's2', leaders: [{ uid: 'a', name: 'A' }] },
+  ];
+  const fix = leftovers(ideas, sessions, [{ id: 'a' }]);
+  assert.equal(fix.count, 2);
+  assert.deepEqual(fix.ideas, [{ id: 'i1', upvotes: ['gone1'], leads: ['gone1'], comments: [{ uid: 'a', text: 'y' }, { text: 'no uid' }] }]);
+  assert.deepEqual(fix.sessions, [{ id: 's1', leaders: [{ name: 'Typed in' }] }]);
+  assert.equal(leftovers(ideas.slice(1), sessions.slice(1), [{ id: 'a' }]).count, 0);
 });

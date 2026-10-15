@@ -25,6 +25,7 @@ import {
   fmtTime,
   emptyCells,
   displayUrl,
+  leftovers,
 } from './model.js';
 
 // ---------------- Auth & event picker ----------------
@@ -209,6 +210,7 @@ function Console({ user, code, onExit }) {
     </header>
     <main class="wrap wide">
       <${PhaseStepper} event=${event} base=${ctx.base} tab=${tab} onTab=${setTab} />
+      <${LeftoverNotice} ...${ctx} />
       <${Tabs}
         active=${tab}
         onChange=${setTab}
@@ -273,6 +275,34 @@ function PhaseStepper({ event, base, tab, onTab }) {
 
 // ---------------- Overview ----------------
 
+function leftoverOps(base, fix) {
+  return [
+    ...fix.ideas.map((x) => ({
+      op: 'update',
+      path: `${base}/ideas/${x.id}`,
+      data: {
+        ...Object.fromEntries([...x.upvotes.map((u) => [`upvotes.${u}`, DEL]), ...x.leads.map((u) => [`leads.${u}`, DEL])]),
+        ...(x.comments ? { comments: x.comments } : {}),
+      },
+    })),
+    ...fix.sessions.map((x) => ({ op: 'update', path: `${base}/sessions/${x.id}`, data: { leaders: x.leaders } })),
+  ];
+}
+
+// Shown when ideas still carry backing etc. from people who were removed.
+function LeftoverNotice({ participants, ideas, sessions, base }) {
+  const fix = leftovers(ideas, sessions, participants);
+  const clear = guard(async () => {
+    await (await backend()).batch(leftoverOps(base, fix));
+    toast('Cleared leftovers from removed people');
+  });
+  if (!fix.count) return null;
+  return html`<div class="banner warn row wrap-row">
+    <span><strong>${fix.count} ${fix.count === 1 ? 'idea or session still shows' : 'ideas or sessions still show'}</strong> backing, lead offers or comments from people who were removed.</span>
+    <button class="btn small primary" onClick=${clear}>Clear leftovers</button>
+  </div>`;
+}
+
 function Overview({ event, participants, ideas, sessions, base }) {
   const joinUrl = siteUrl('index.html', event.id);
   const scores = categoryScores(event, participants);
@@ -280,7 +310,11 @@ function Overview({ event, participants, ideas, sessions, base }) {
   const voted = participants.filter((p) => Object.keys(p.votes || {}).length || Object.keys(p.dots || {}).length).length;
   const roles = {};
   participants.forEach((p) => (roles[p.role || 'Not set'] = (roles[p.role || 'Not set'] || 0) + 1));
-  const removeP = guard(async (p) => confirm(`Remove ${p.name}? Their rankings and votes are deleted.`) && (await backend()).remove(`${base}/participants/${p.id}`));
+  const removeP = guard(async (p) => {
+    if (!confirm(`Remove ${p.name}? Their rankings, votes, backing, lead offers and comments are deleted.`)) return;
+    const rest = participants.filter((x) => x.id !== p.id);
+    await (await backend()).batch([{ op: 'delete', path: `${base}/participants/${p.id}` }, ...leftoverOps(base, leftovers(ideas, sessions, rest))]);
+  });
   return html`<div class="grid-2">
     <section class="card">
       <h3>Join</h3>

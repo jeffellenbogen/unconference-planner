@@ -570,6 +570,25 @@ export function parseAiGroups(text, event, ideas) {
 }
 
 // Leaders suggested from people who said "I could lead" on the source ideas.
+// Backing, lead offers, comments and leader slots still held by people who were
+// removed from the event. Returns only the ideas/sessions that need a change.
+export function leftovers(ideas, sessions, participants) {
+  const here = new Set(participants.map((p) => p.id));
+  const gone = (uid) => !!uid && !here.has(uid);
+  const ideaFixes = ideas
+    .map((i) => {
+      const upvotes = Object.keys(i.upvotes || {}).filter(gone);
+      const leads = Object.keys(i.leads || {}).filter(gone);
+      const comments = (i.comments || []).filter((c) => !gone(c.uid));
+      return { id: i.id, upvotes, leads, comments: comments.length < (i.comments || []).length ? comments : null };
+    })
+    .filter((x) => x.upvotes.length || x.leads.length || x.comments);
+  const sessionFixes = sessions
+    .filter((s) => (s.leaders || []).some((l) => gone(l.uid)))
+    .map((s) => ({ id: s.id, leaders: s.leaders.filter((l) => !gone(l.uid)) }));
+  return { ideas: ideaFixes, sessions: sessionFixes, count: ideaFixes.length + sessionFixes.length };
+}
+
 export function leadersFromIdeas(ideas) {
   const seen = new Map();
   for (const i of ideas) for (const [u, name] of Object.entries(i.leads || {})) if (!seen.has(u)) seen.set(u, { uid: u, name });
