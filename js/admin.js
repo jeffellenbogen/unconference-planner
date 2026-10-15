@@ -712,7 +712,35 @@ function AiImportModal({ event, ideas, sessions, base, onClose }) {
 
 // ---------------- Sessions ----------------
 
-function SessionsAdmin({ event, sessions, ideas, participants, base }) {
+// During Step 1 participants see ideas, not sessions. A session made directly
+// (e.g. "+ Empty session") needs an idea behind it to be seen and backed.
+function HiddenSessionsNotice({ event, sessions, ideas, base, user }) {
+  const phase = event.phase || 'setup';
+  const visible = new Set(ideas.filter((i) => !i.hidden).map((i) => i.id));
+  const missing = sessions.filter((s) => !(s.ideaIds || []).some((id) => visible.has(id)));
+  const add = guard(async () => {
+    const ops = [];
+    for (const s of missing) {
+      const iid = newId(12);
+      ops.push({
+        op: 'set',
+        path: `${base}/ideas/${iid}`,
+        data: { title: s.title, description: s.description || '', categoryId: s.categoryId || null, authorUid: user.uid, authorName: 'Organizer', organizer: true, fromSession: s.id, sessionId: s.id, createdAt: Date.now(), upvotes: {}, leads: {}, comments: [] },
+      });
+      ops.push({ op: 'update', path: `${base}/sessions/${s.id}`, data: { ideaIds: [...(s.ideaIds || []), iid] } });
+    }
+    await (await backend()).batch(ops);
+    toast(`Participants can now see and back ${missing.length === 1 ? 'it' : 'them'} in Step 1`);
+  });
+  if (!['setup', 'ideas'].includes(phase) || !missing.length) return null;
+  const names = missing.map((s) => `“${s.title}”`).join(', ');
+  return html`<div class="banner warn row wrap-row">
+    <span><strong>${missing.length} session${missing.length > 1 ? 's aren’t' : ' isn’t'} visible to participants yet:</strong> ${names}. In Step 1 people see and back <em>ideas</em>, and ${missing.length > 1 ? 'these have' : 'this has'} no idea behind ${missing.length > 1 ? 'them' : 'it'}.</span>
+    <button class="btn small primary" onClick=${add}>Show in Step 1</button>
+  </div>`;
+}
+
+function SessionsAdmin({ event, sessions, ideas, participants, base, user }) {
   const demand = sessionDemand(event, participants, sessions);
   const [sort, setSort] = useState('demand');
   const list = [...sessions].sort((a, b) =>
@@ -741,6 +769,7 @@ function SessionsAdmin({ event, sessions, ideas, participants, base }) {
         <button class="btn small" onClick=${addEmpty}>+ Empty session</button>
       </div>
     </div>
+    <${HiddenSessionsNotice} event=${event} sessions=${sessions} ideas=${ideas} base=${base} user=${user} />
     ${sessions.length === 0 && html`<${Empty}>No sessions yet. Select ideas in “Ideas & merging” to create some.<//>`}
     ${sessions.length > 1 &&
     html`<div class=${chosen.length ? 'selection-bar active' : 'selection-bar'}>
@@ -807,8 +836,13 @@ function MergeSessionsModal({ event, chosen, demand, participants, base, onClose
 
 function SessionEditor({ s, d, event, ideas, sessions, base, selected, onToggle }) {
   const path = `${base}/sessions/${s.id}`;
-  const save = guard(async (patch) => (await backend()).update(path, patch));
   const src = (s.ideaIds || []).map((id) => ideas.find((i) => i.id === id)).filter(Boolean);
+  const save = guard(async (patch) => {
+    // An idea made from this session (“Show in Step 1”) mirrors its title, description and topic.
+    const mirror = Object.fromEntries(Object.entries(patch).filter(([k]) => ['title', 'description', 'categoryId'].includes(k)));
+    const seeds = Object.keys(mirror).length ? src.filter((i) => i.fromSession === s.id) : [];
+    await (await backend()).batch([{ op: 'update', path, data: patch }, ...seeds.map((i) => ({ op: 'update', path: `${base}/ideas/${i.id}`, data: mirror }))]);
+  });
   const leaderKey = (l) => l.uid || l.name;
   const offers = [...leadersFromIdeas(src), ...d.leadOffers].filter(
     (o, i, arr) => !(s.leaders || []).some((l) => leaderKey(l) === o.uid) && arr.findIndex((x) => x.uid === o.uid) === i
