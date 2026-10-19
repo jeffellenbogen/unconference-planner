@@ -55,6 +55,8 @@ python3 -m http.server 8000
 
 Repo **Settings → Pages → Build and deployment**: set *Deploy from a branch*, choose `main`, and set the folder to `/ (root)`. The site appears at `https://USERNAME.github.io/REPO/`. Participants go to that URL, or scan the QR code on the projector page.
 
+To send people somewhere else (a short link, another host, or a placeholder for a demo), set **Settings → Join link** for that event. The projector's QR code and address use it; leave it blank to use this app's own address with the code filled in. A new event never copies the join link from an older one.
+
 ## Day-of checklist
 
 - [ ] Create the event the day before. Check rooms, capacities, and agenda times.

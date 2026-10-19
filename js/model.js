@@ -59,6 +59,16 @@ export function displayUrl(url) {
   return String(url || '').trim().replace(/^https?:\/\//i, '').replace(/\/$/, '');
 }
 
+// Where people go to join. The organizer's own link (a short link, another
+// host, or a placeholder for a demo) wins; otherwise this app's address with
+// the code filled in. `shortLink` is the older name for the same setting.
+export function joinLink(event, appUrl) {
+  const custom = String(event.joinLink ?? event.shortLink ?? '').trim();
+  if (!custom) return { url: appUrl, text: displayUrl(appUrl.replace(/index\.html.*$/, '')), custom: false };
+  const url = /^https?:\/\//i.test(custom) ? custom : `https://${custom}`;
+  return { url, text: displayUrl(url), custom: true };
+}
+
 export function fmtTime(t) {
   if (!t) return '';
   const [h, m] = t.split(':').map(Number);

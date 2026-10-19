@@ -24,7 +24,7 @@ import {
   scheduleText,
   fmtTime,
   emptyCells,
-  displayUrl,
+  joinLink,
   leftovers,
 } from './model.js';
 
@@ -305,6 +305,7 @@ function LeftoverNotice({ participants, ideas, sessions, base }) {
 
 function Overview({ event, participants, ideas, sessions, base }) {
   const joinUrl = siteUrl('index.html', event.id);
+  const join = joinLink(event, joinUrl);
   const scores = categoryScores(event, participants);
   const ranked = participants.filter((p) => p.catRank?.length).length;
   const voted = participants.filter((p) => Object.keys(p.votes || {}).length || Object.keys(p.dots || {}).length).length;
@@ -319,13 +320,13 @@ function Overview({ event, participants, ideas, sessions, base }) {
     <section class="card">
       <h3>Join</h3>
       <div class="join-box">
-        <${QR} text=${joinUrl} />
+        <${QR} text=${join.url} />
         <div>
-          <p>Go to <a href=${joinUrl} target="_blank" rel="noopener">${joinUrl.replace(/^https?:\/\//, '').replace(/\?.*/, '')}</a></p>
-          ${event.shortLink && html`<p>Short link: <strong>${displayUrl(event.shortLink)}</strong></p>`}
+          <p>Go to <a href=${join.url} target="_blank" rel="noopener">${join.text}</a></p>
+          ${join.custom && html`<p class="small muted">Your join link (set in Settings). This app: <a href=${joinUrl} target="_blank" rel="noopener">${joinLink({}, joinUrl).text}</a></p>`}
           <p>Code: <strong class="code">${event.id}</strong></p>
           ${event.wifi?.ssid && html`<p class="small">Wi-Fi: <strong>${event.wifi.ssid}</strong>${event.wifi.password ? html` · password <strong>${event.wifi.password}</strong>` : ''}</p>`}
-          <button class="btn small" onClick=${() => copyText(joinUrl, 'Join link copied')}>Copy join link</button>
+          <button class="btn small" onClick=${() => copyText(join.url, 'Join link copied')}>Copy join link</button>
         </div>
       </div>
     </section>
@@ -1109,7 +1110,13 @@ function ScheduleAdmin({ event, sessions, participants, base }) {
 // ---------------- Settings ----------------
 
 function Settings({ event, participants, ideas, sessions, base, onDeleted }) {
-  const [draft, setDraft] = useState(() => ({ shortLink: '', wifi: { ssid: '', password: '' }, ...pick(event, ['title', 'tagline', 'categories', 'rooms', 'agenda', 'roles', 'voting', 'wifi', 'shortLink']) }));
+  const [draft, setDraft] = useState(() => ({
+    wifi: { ssid: '', password: '' },
+    ...pick(event, ['title', 'tagline', 'categories', 'rooms', 'agenda', 'roles', 'voting', 'wifi']),
+    joinLink: event.joinLink ?? event.shortLink ?? '',
+  }));
+  const appUrl = siteUrl('index.html', event.id);
+  const join = joinLink(draft, appUrl);
   const [dirty, setDirty] = useState(false);
   const up = (k, v) => (setDraft({ ...draft, [k]: v }), setDirty(true));
   const listOp = (k) => ({
@@ -1129,7 +1136,7 @@ function Settings({ event, participants, ideas, sessions, base, onDeleted }) {
   const save = guard(async () => {
     const d = { ...draft, agenda: [...draft.agenda].sort((a, b) => a.start.localeCompare(b.start)) };
     if (!d.categories.length) throw new Error('Keep at least one topic.');
-    await (await backend()).update(base, d);
+    await (await backend()).update(base, { ...d, ...(event.shortLink !== undefined ? { shortLink: DEL } : {}) });
     setDraft(d);
     setDirty(false);
     toast('Settings saved');
@@ -1178,9 +1185,21 @@ function Settings({ event, participants, ideas, sessions, base, onDeleted }) {
         <h3>Basics</h3>
         <label>Title<input value=${draft.title} onInput=${(e) => up('title', e.target.value)} /></label>
         <label>Welcome line<input value=${draft.tagline || ''} onInput=${(e) => up('tagline', e.target.value)} /></label>
-        <label>Short link <span class="muted small">(optional — shown on the projector instead of the long address)</span>
-          <input value=${draft.shortLink || ''} placeholder="e.g. bit.ly/your-event" onInput=${(e) => up('shortLink', e.target.value.trim())} autocomplete="off" />
-        </label>
+        <fieldset class="join-fields">
+          <legend>Join link <span class="muted">(optional — the QR code and address on the projector)</span></legend>
+          <div class="join-setting">
+            <div class="stack">
+              <label>Link<input value=${draft.joinLink || ''} placeholder=${`blank = ${joinLink({}, appUrl).text}`} onInput=${(e) => up('joinLink', e.target.value.trim())} autocomplete="off" /></label>
+              <p class="small muted">Leave blank to use this app’s address with the code filled in. Or enter a short link (e.g. bit.ly), another host, or a placeholder for a demo.</p>
+              <p class="small muted">For a short link that also fills in the code, point it at
+                <button type="button" class="link small" onClick=${() => copyText(appUrl, 'Direct link copied')}>this event’s direct link</button>.</p>
+            </div>
+            <div class="join-preview" aria-label="Projector preview">
+              <${QR} text=${join.url} />
+              <strong>${join.text}</strong>
+            </div>
+          </div>
+        </fieldset>
         <fieldset class="wifi-fields">
           <legend>Wi-Fi for the day <span class="muted">(optional — shown on the projector)</span></legend>
           <label>Network name<input value=${draft.wifi?.ssid || ''} placeholder="e.g. ACIS-T" onInput=${(e) => up('wifi', { ...draft.wifi, ssid: e.target.value.trim() })} autocomplete="off" /></label>

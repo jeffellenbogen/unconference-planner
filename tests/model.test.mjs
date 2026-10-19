@@ -19,6 +19,7 @@ import {
   sessionLeaders,
   displayUrl,
   leftovers,
+  joinLink,
 } from '../js/model.js';
 
 function event(mode = 'interest', rooms = 2) {
@@ -240,4 +241,13 @@ test('leftovers finds backing from removed people only', () => {
   assert.deepEqual(fix.ideas, [{ id: 'i1', upvotes: ['gone1'], leads: ['gone1'], comments: [{ uid: 'a', text: 'y' }, { text: 'no uid' }] }]);
   assert.deepEqual(fix.sessions, [{ id: 's1', leaders: [{ name: 'Typed in' }] }]);
   assert.equal(leftovers(ideas.slice(1), sessions.slice(1), [{ id: 'a' }]).count, 0);
+});
+
+test('joinLink: own link wins, else this app with the code', () => {
+  const app = 'https://host.example/app/index.html?code=abc';
+  assert.deepEqual(joinLink({}, app), { url: app, text: 'host.example/app', custom: false });
+  assert.deepEqual(joinLink({ joinLink: 'bit.ly/Next' }, app), { url: 'https://bit.ly/Next', text: 'bit.ly/Next', custom: true });
+  assert.equal(joinLink({ joinLink: 'http://demo.invalid/' }, app).url, 'http://demo.invalid/');
+  assert.equal(joinLink({ shortLink: 'https://bit.ly/Old' }, app).url, 'https://bit.ly/Old');
+  assert.equal(joinLink({ joinLink: '', shortLink: 'https://bit.ly/Old' }, app).custom, false);
 });

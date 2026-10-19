@@ -247,5 +247,5 @@ export function QR({ text, size = 4 }) {
     q.make();
     return q.createSvgTag({ cellSize: size, margin: 2, scalable: true });
   }, [text, size]);
-  return html`<div class="qr" dangerouslySetInnerHTML=${{ __html: svg }}></div>`;
+  return html`<div class="qr" title=${text} dangerouslySetInnerHTML=${{ __html: svg }}></div>`;
 }

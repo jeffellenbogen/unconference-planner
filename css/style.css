@@ -523,6 +523,12 @@ textarea { resize: vertical; }
 .wifi-creds dd { margin: 0; font-size: 1.7rem; font-weight: 800; color: var(--navy); word-break: break-all; line-height: 1.15; }
 .proj-join:has(.wifi-box) > .qr { max-width: 200px; }
 .wifi-fields { flex-direction: column; flex-wrap: nowrap; }
+.join-fields { display: block; }
+.join-setting { display: flex; gap: 14px; align-items: flex-start; }
+.join-setting > .stack { flex: 1; min-width: 0; }
+.join-setting p { margin: 0; }
+.join-preview { flex: none; width: 128px; display: grid; gap: 4px; justify-items: center; text-align: center; font-size: 0.85rem; color: var(--blue); word-break: break-all; }
+.join-preview .qr { width: 112px; padding: 6px; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
 .proj-join .qr { width: 100%; max-width: 250px; padding: 10px; background: #fff; border-radius: 16px; box-shadow: var(--shadow); }
 .join-or { color: var(--muted); margin: 8px 0 0; font-size: 0.95rem; }
 .join-url { font-weight: 800; color: var(--blue); word-break: break-all; font-size: 1.05rem; margin: 0; }

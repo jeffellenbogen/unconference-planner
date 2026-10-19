@@ -1,6 +1,6 @@
 import { html, useState, useEffect, mount, useEventData, ScheduleGrid, CategoryBars, CategoryTag, QR, LoadError, Logo, StepTracker, getParam, siteUrl } from './ui.js';
 import { backend } from './backend.js';
-import { normalizeCode, categoryScores, ideaStats, ideaScore, sessionDemand, participantStep, STEPS, displayUrl } from './model.js';
+import { normalizeCode, categoryScores, ideaStats, ideaScore, sessionDemand, participantStep, STEPS, joinLink } from './model.js';
 
 function Display() {
   const code = normalizeCode(getParam('code') || '');
@@ -19,8 +19,7 @@ function Display() {
   const { event, participants, ideas, sessions } = data;
   const phase = event.phase || 'setup';
   const published = phase === 'schedule' && event.schedule?.published;
-  const joinUrl = siteUrl('index.html', event.id);
-  const shortUrl = displayUrl(event.shortLink) || displayUrl(joinUrl.replace(/index\.html.*$/, ''));
+  const join = joinLink(event, siteUrl('index.html', event.id));
   const now = nowCopy(event);
   const { step, state } = participantStep(event);
 
@@ -41,9 +40,9 @@ function Display() {
             </dl>
           </section>`}
         <p class="join-label">${event.wifi?.ssid && html`<span class="join-num">2</span>`}${event.wifi?.ssid ? 'Open the app' : 'Join on your phone or laptop'}</p>
-        <${QR} text=${joinUrl} size=${6} />
+        <${QR} text=${join.url} size=${6} />
         <p class="join-or">or go to</p>
-        <p class=${event.shortLink ? 'join-url short' : 'join-url'}>${shortUrl}</p>
+        <p class=${join.text.length <= 24 ? 'join-url short' : 'join-url'}>${join.text}</p>
         <div class="join-code"><span>Code</span><strong>${event.id}</strong></div>
         <p class="join-count"><strong>${participants.length}</strong> joined</p>
         <button class="link small fs-btn" onClick=${() => document.documentElement.requestFullscreen?.()}>Full screen</button>
